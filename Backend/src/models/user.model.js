@@ -26,8 +26,21 @@ const userSchema= new Schema(
         },
         refreshToken: {
             type: String
+        },
+        friends: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "User"
+            }
+        ],
+        lastSeen: {
+            type: Date,
+            default: Date.now
+        },
+        isOnline: {
+            type: Boolean,
+            default: false
         }
-    
     },{timestamps:true}
 )
 

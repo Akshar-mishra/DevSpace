@@ -18,8 +18,8 @@ app.use(cookieParser());
 import userRouter from "./routes/user.routes.js"
 app.use("/api/v1/users",userRouter)
 
-import workSpaceRouter from "./routes/workspace.routes.js"
-app.use("/api/v1/workspaces",workSpaceRouter)
+import room from "./routes/room.routes.js"
+app.use("/api/v1/rooms",room)
 
 
 
