@@ -13,7 +13,14 @@ app.use(express.urlencoded({extended:true , limit:'16kb'}))
 app.use(express.json({limit:'16kb'}))
 app.use(cookieParser());
 
+
+//Routers
 import userRouter from "./routes/user.routes.js"
 app.use("/api/v1/users",userRouter)
+
+import workSpaceRouter from "./routes/workspace.routes.js"
+app.use("/api/v1/workspaces",workSpaceRouter)
+
+
 
 export default app
