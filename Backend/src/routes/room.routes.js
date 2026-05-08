@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createRoom, getUserRooms, getRoomById } from "../controllers/room.controller.js";
+import { createRoom, getUserRooms, getRoomById ,joinRoom} from "../controllers/room.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
