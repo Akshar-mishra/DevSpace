@@ -6,7 +6,7 @@ import LoadingSpinner from './LoadingSpinner';
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useContext(AuthContext);
 
-    // ✅ FIX 2: Show spinner while checking auth instead of redirecting
+    //  Show spinner while checking auth instead of redirecting
     if (loading) {
         return <LoadingSpinner />;
     }

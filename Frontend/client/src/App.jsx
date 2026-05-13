@@ -6,11 +6,12 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Register from './pages/Register';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Room from './pages/Room';
 
 function App() {
     const { setUser } = useContext(AuthContext);
 
-    // ✅ FIX 5: Setup axios interceptor for token refresh
+    // Setup axios interceptor for token refresh
     useEffect(() => {
         setupAxiosInterceptors(setUser);
     }, [setUser]);
@@ -36,6 +37,8 @@ function App() {
 
             {/* 404 fallback */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
+            <Route path="/room/:roomId" element={<ProtectedRoute> <Room /></ProtectedRoute>} />
         </Routes>
     );
 }

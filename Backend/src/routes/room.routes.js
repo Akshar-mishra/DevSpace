@@ -1,17 +1,23 @@
 import { Router } from "express";
-import { createRoom, getUserRooms, getRoomById ,joinRoom} from "../controllers/room.controller.js";
+import {
+    createRoom,
+    joinRoom,
+    getRoomById,
+    getMyRooms,
+    getRoomMessages
+} from "../controllers/room.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-// Global Security Checkpoint
 router.use(verifyJWT);
 
-// Resource: Collections
-router.route("/").post(createRoom).get(getUserRooms);
+// must sit before /:id — Express would match "my-rooms" as an id otherwise
+router.route("/my-rooms").get(getMyRooms);
 
-// Resource: Specific Entity
-router.route("/:roomId").get(getRoomById);
+router.route("/").post(createRoom);
+router.route("/join/:inviteLink").post(joinRoom);
+router.route("/:id").get(getRoomById);
+router.route("/:id/messages").get(getRoomMessages);
 
-router.route("/join").post(joinRoom);
 export default router;
