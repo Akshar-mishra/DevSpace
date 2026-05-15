@@ -36,10 +36,15 @@ export const createRoom = asyncHandler(async (req, res) => {
 export const joinRoom = asyncHandler(async (req, res) => {
     const { inviteLink } = req.params;
 
-    if (!inviteLink) throw new ApiErrors(400, "Invite link is required");
+    if (!inviteLink){
+        throw new ApiErrors(400, "Invite link is required");
+    }
 
     const room = await Room.findOne({ inviteLink });
-    if (!room) throw new ApiErrors(404, "Invalid invite link or room does not exist");
+    if (!room){
+         throw new ApiErrors(404, "Invalid invite link or room does not exist");
+    }
+    
     if (room.status === 'ended') throw new ApiErrors(403, "This session has already ended.");
 
     if (room.participants.some(id => id.equals(req.user._id))) {
@@ -56,6 +61,7 @@ export const joinRoom = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, room, "Successfully joined the room"));
 });
 
+
 export const getRoomById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
@@ -65,6 +71,7 @@ export const getRoomById = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, room, "Room data fetched successfully"));
 });
 
+
 export const getMyRooms = asyncHandler(async (req, res) => {
     const rooms = await Room.find({ participants: req.user._id })
         .populate("createdBy", "name email")
@@ -73,8 +80,9 @@ export const getMyRooms = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, rooms, "Rooms fetched successfully"));
 });
 
-// ── Chat history ──────────────────────────────────────────────────────────────
-export const getRoomMessages = asyncHandler(async (req, res) => {
+
+
+export const   getRoomMessages = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     const room = await Room.findById(id);
@@ -88,5 +96,8 @@ export const getRoomMessages = asyncHandler(async (req, res) => {
         .sort({ createdAt: 1 })
         .limit(200);
 
-    return res.status(200).json(new ApiResponse(200, messages, "Messages fetched successfully"));
+    return res.status(200)
+    .json(
+        new ApiResponse(200, messages, "Messages fetched successfully")
+    );
 });

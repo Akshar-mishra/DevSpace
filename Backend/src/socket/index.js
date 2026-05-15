@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import { Message } from "../models/message.model.js";
+import { ApiErrors } from "../utils/ApiErrors.js";
 
 export const initializeSocket = (httpServer) => {
 
@@ -9,47 +10,51 @@ export const initializeSocket = (httpServer) => {
         cors: { origin: "http://localhost:5173", credentials: true }
     });
 
-    // ── Auth middleware ───────────────────────────────────────────────────────
+    // Auth middleware 
     io.use((socket, next) => {
         try {
             const cookieString = socket.handshake.headers.cookie;
-            if (!cookieString) throw new Error("No cookies found");
+            if (!cookieString) {
+                throw new ApiErrors(401,"No cookies found");
+            }
 
+            //making cookie to object
             const cookies = cookie.parse(cookieString);
             const token = cookies?.accessToken;
-            if (!token) throw new Error("Missing access token");
+            if (!token){
+                throw new ApiErrors(401,"Missing access token");
+            } 
 
             const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
             socket.user = decoded;
             next();
         } catch (error) {
             console.error("Socket Auth Error:", error.message);
-            next(new Error("Authentication error"));
+            next(new ApiErrors(401, "Authentication error"));
         }
     });
 
-    // ── Connection ────────────────────────────────────────────────────────────
+    // Connection  //socket=client 
     io.on("connection", (socket) => {
-        console.log(`User connected: ${socket.user?.email || socket.id}`);
 
-        // ── Room join/leave ───────────────────────────────────────────────────
+        // Room join/leave  (socket io's room)
         socket.on("join-room", (roomId) => {
             socket.join(roomId);
             socket.to(roomId).emit("user-joined", { userId: socket.user._id });
             console.log(`User ${socket.user._id} joined room ${roomId}`);
         });
 
-        // ── Code sync ─────────────────────────────────────────────────────────
+        // Code sync 
         socket.on("code-change", ({ roomId, code }) => {
             socket.to(roomId).emit("code-update", code);
         });
 
-        // ── Language change — broadcast to whole room so everyone's Monaco switches
+        //Language change — broadcast to whole room so everyone's Monaco switches
         socket.on("language-change", ({ roomId, language }) => {
             socket.to(roomId).emit("language-update", language);
         });
 
-        // ── Chat ──────────────────────────────────────────────────────────────
+        // Chat 
         socket.on("send-message", async ({ roomId, content }) => {
             if (!content?.trim()) return;
 
@@ -77,16 +82,16 @@ export const initializeSocket = (httpServer) => {
             }
         });
 
-        // ── Cursor sync ───────────────────────────────────────────────────────
+        //── Cursor sync 
         socket.on("cursor-move", ({ roomId, cursorData }) => {
             socket.to(roomId).emit("cursor-update", {
                 userId: socket.user._id,
                 userName: socket.user.name,
                 ...cursorData
             });
-        });
+        }); 
 
-        // ── Disconnect cleanup ────────────────────────────────────────────────
+        // Disconnect cleanup 
         socket.on("disconnecting", () => {
             for (const room of socket.rooms) {
                 if (room !== socket.id) {

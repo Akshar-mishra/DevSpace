@@ -5,21 +5,16 @@ import { AuthContext } from "./AuthContext";
 const SocketContext = createContext();
 
 export const SocketProvider = ({ children }) => {
-    // We grab the user from the AuthContext you just showed me
+    
     const { user } = useContext(AuthContext);
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        // Only run this if the user is actually logged in
+
         if (user) {
-            
-            // 1. INITIALIZE: This opens the "phone line" to the backend.
-            // withCredentials: true is MANDATORY so your browser sends the secure cookie.
-            const socketInstance = io(import.meta.env.VITE_BACKEND_URL, { 
-                withCredentials: true 
-            });
-            
-            // (Optional Debugging: So you can see it connect in your browser console)
+            // io() creates a new connection to the backend.
+            const socketInstance = io(import.meta.env.VITE_BACKEND_URL, {withCredentials: true});
+
             socketInstance.on("connect", () => {
                 console.log("🟢 Frontend Socket Connected:", socketInstance.id);
             });
@@ -28,14 +23,14 @@ export const SocketProvider = ({ children }) => {
             // so other components can use it.
             setSocket(socketInstance);
 
-            // 3. CLEANUP: When the user logs out (user becomes null), React runs this return function.
+            // 3. CLEANUP: When the user logs out (user becomes null),runs return function.
             // This hangs up the phone line. If you don't do this, your server crashes from ghost connections.
             return () => {
                 socketInstance.disconnect();
                 console.log("🔴 Frontend Socket Disconnected");
             };
         }
-    }, [user]); // The dependency array: run this logic every time 'user' changes.
+    }, [user]); 
 
     return (
         <SocketContext.Provider value={{ socket }}>

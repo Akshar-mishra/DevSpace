@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const initAuth = async () => {
             try {
-                // Call /users/me to get current logged-in user
+                // Call to get current logged-in user
                 const response = await api.get('/users/me');
                 setUser(response.data.data);
             } catch (error) {

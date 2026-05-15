@@ -5,7 +5,6 @@ import { useSocket } from "../context/SocketContext";
 import { AuthContext } from "../context/AuthContext";
 import api from "../services/api";
 
-// ── Constants ─────────────────────────────────────────────────────────────────
 const DEFAULT_BOILERPLATE = "// Write your solution here\n";
 
 const LANGUAGES = [
