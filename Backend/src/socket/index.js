@@ -9,7 +9,8 @@ export const initializeSocket = (httpServer) => {
     const io = new Server(httpServer, {
         cors: { origin: "http://localhost:5173", credentials: true }
     });
-
+    
+    const roomCodeState = new Map();
     // Auth middleware 
     io.use((socket, next) => {
         try {
@@ -41,16 +42,29 @@ export const initializeSocket = (httpServer) => {
         socket.on("join-room", (roomId) => {
             socket.join(roomId);
             socket.to(roomId).emit("user-joined", { userId: socket.user._id });
-            console.log(`User ${socket.user._id} joined room ${roomId}`);
+
+            // 👇 This is the fix — send current state to the joining user
+            const state = roomCodeState.get(roomId);
+            if (state) {
+                socket.emit("room-state", state); // only to this socket
+            }
         });
 
         // Code sync 
         socket.on("code-change", ({ roomId, code }) => {
+            roomCodeState.set(roomId, { 
+                ...roomCodeState.get(roomId), 
+                code 
+            });
             socket.to(roomId).emit("code-update", code);
         });
 
         //Language change — broadcast to whole room so everyone's Monaco switches
         socket.on("language-change", ({ roomId, language }) => {
+            roomCodeState.set(roomId, { 
+                ...roomCodeState.get(roomId), 
+                language 
+            });
             socket.to(roomId).emit("language-update", language);
         });
 
@@ -99,7 +113,9 @@ export const initializeSocket = (httpServer) => {
                 }
             }
         });
-
+        socket.on("end-session", ({ roomId }) => {
+            roomCodeState.delete(roomId);
+        });
         socket.on("disconnect", () => {
             console.log(`User disconnected: ${socket.id}`);
         });

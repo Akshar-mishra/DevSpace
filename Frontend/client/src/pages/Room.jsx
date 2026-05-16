@@ -156,6 +156,7 @@ export default function Room() {
 
     const editorRef      = useRef(null);
     const isRemoteUpdate = useRef(false);
+    const pendingState   = useRef(null); 
 
     // Load room
     useEffect(() => {
@@ -174,6 +175,26 @@ export default function Room() {
         load();
         return () => { cancelled = true; };
     }, [roomId, navigate]);
+
+    useEffect(() => {
+        if (!socket) return;
+        
+        socket.on("room-state", ({ code, language }) => {
+            if (language) setLanguage(language);
+            
+            if (code) {
+                if (editorRef.current) {
+                    // Editor already mounted, apply immediately
+                    editorRef.current.setValue(code);
+                } else {
+                    // Editor not mounted yet, hold it
+                    pendingState.current = code;
+                }
+            }
+        });
+
+        return () => socket.off("room-state");
+    }, [socket]);
 
     // Join socket room
     useEffect(() => {
@@ -223,6 +244,11 @@ export default function Room() {
 
     const handleEditorDidMount = useCallback((editor) => {
         editorRef.current = editor;
+        // If room-state arrived before editor mounted, apply it now
+        if (pendingState.current) {
+            editor.setValue(pendingState.current);
+            pendingState.current = null;
+        }
     }, []);
 
     const handleEditorChange = (value) => {
