@@ -12,11 +12,6 @@ const roomSchema = new Schema(
             enum: ['interview_room', 'friendly_room'],
             required: [true, "Room type is required"]
         },
-        mode: {
-            type: String,
-            enum: ['compete', 'collab'],
-            // Not required because interview_rooms don't use these modes
-        },
         status: {
             type: String,
             enum: ['waiting', 'active', 'ended'],

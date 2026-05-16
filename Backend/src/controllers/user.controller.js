@@ -33,7 +33,7 @@ export const registerUser = asyncHandler(async (req, res) => {
 
     const existingUser = await User.findOne({email})
     if (existingUser) {
-        throw new ApiErrors(402, "Username or Email existing")
+        throw new ApiErrors(400, "Username or Email existing")
     }
 
     const user = await User.create({

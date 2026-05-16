@@ -1,5 +1,4 @@
 import { Room } from "../models/room.model.js"
-import { Message } from "../models/message.model.js"
 import { ApiErrors } from "../utils/ApiErrors.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
@@ -11,7 +10,7 @@ export const createRoom = asyncHandler(async (req, res) => {
     if (!name || !type) {
         throw new ApiErrors(400, "Room name and type are required");
     }
-    if (type === 'friendly_room' && !mode) {
+    if (type === 'friendly_room' ) {
         throw new ApiErrors(400, "Friendly rooms require a mode (compete or collab)");
     }
 
@@ -20,7 +19,6 @@ export const createRoom = asyncHandler(async (req, res) => {
     const room = await Room.create({
         name,
         type,
-        mode: type === 'interview_room' ? undefined : mode,
         isPublic: isPublic || false,
         maxParticipants: maxParticipants || 2,
         inviteLink,
@@ -80,24 +78,3 @@ export const getMyRooms = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, rooms, "Rooms fetched successfully"));
 });
 
-
-
-export const   getRoomMessages = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-
-    const room = await Room.findById(id);
-    if (!room) throw new ApiErrors(404, "Room not found");
-
-    const isMember = room.participants.some(p => p.equals(req.user._id));
-    if (!isMember) throw new ApiErrors(403, "You are not a participant in this room");
-
-    const messages = await Message.find({ room: id })
-        .populate("sender", "name role")
-        .sort({ createdAt: 1 })
-        .limit(200);
-
-    return res.status(200)
-    .json(
-        new ApiResponse(200, messages, "Messages fetched successfully")
-    );
-});

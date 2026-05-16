@@ -1,11 +1,5 @@
 import { Router } from "express";
-import {
-    createRoom,
-    joinRoom,
-    getRoomById,
-    getMyRooms,
-    getRoomMessages
-} from "../controllers/room.controller.js";
+import {createRoom,joinRoom,getRoomById,getMyRooms,} from "../controllers/room.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
@@ -18,6 +12,5 @@ router.route("/my-rooms").get(getMyRooms);
 router.route("/").post(createRoom);
 router.route("/join/:inviteLink").post(joinRoom);
 router.route("/:id").get(getRoomById);
-router.route("/:id/messages").get(getRoomMessages);
 
 export default router;

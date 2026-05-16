@@ -1,7 +1,6 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
-import { Message } from "../models/message.model.js";
 import { ApiErrors } from "../utils/ApiErrors.js";
 
 export const initializeSocket = (httpServer) => {
@@ -71,39 +70,15 @@ export const initializeSocket = (httpServer) => {
         // Chat 
         socket.on("send-message", async ({ roomId, content }) => {
             if (!content?.trim()) return;
-
-            try {
-                // Save to DB with populated sender so frontend gets name immediately
-                const message = await Message.create({
-                    room: roomId,
-                    sender: socket.user._id,
-                    content: content.trim()
-                });
-
-                const populated = await message.populate("sender", "name role");
-
                 // Broadcast to everyone in the room INCLUDING sender
-                io.to(roomId).emit("receive-message", {
-                    _id: populated._id,
-                    content: populated.content,
-                    sender: populated.sender,
-                    createdAt: populated.createdAt
-                });
-            } catch (err) {
-                console.error("Chat save error:", err.message);
-                // Notify only this socket of failure
-                socket.emit("message-error", "Failed to send message");
-            }
+            io.to(roomId).emit("receive-message", {
+                content: content.trim(),
+                sender: { _id: socket.user._id, name: socket.user.name },
+                createdAt: new Date()
+            })
+            
         });
 
-        //── Cursor sync 
-        socket.on("cursor-move", ({ roomId, cursorData }) => {
-            socket.to(roomId).emit("cursor-update", {
-                userId: socket.user._id,
-                userName: socket.user.name,
-                ...cursorData
-            });
-        }); 
 
         // Disconnect cleanup 
         socket.on("disconnecting", () => {
