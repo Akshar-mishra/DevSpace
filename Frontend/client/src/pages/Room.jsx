@@ -8,12 +8,9 @@ import api from "../services/api";
 const DEFAULT_BOILERPLATE = "// Write your solution here\n";
 
 const LANGUAGES = [
-    { value: "javascript", label: "JavaScript", ext: "js" },
-    { value: "typescript", label: "TypeScript", ext: "ts" },
     { value: "python",     label: "Python",     ext: "py" },
     { value: "java",       label: "Java",       ext: "java" },
     { value: "cpp",        label: "C++",        ext: "cpp" },
-    { value: "go",         label: "Go",         ext: "go" },
 ];
 
 function shouldShareEditor(room) {
@@ -31,23 +28,8 @@ function formatTime(date) {
 function ChatPanel({ roomId, socket, currentUser }) {
     const [messages, setMessages] = useState([]);
     const [input, setInput]       = useState("");
-    const [loading, setLoading]   = useState(true);
+    const [loading, setLoading]   = useState(false);
     const bottomRef               = useRef(null);
-
-    // Load history on mount
-    useEffect(() => {
-        const load = async () => {
-            try {
-                const res = await api.get(`/rooms/${roomId}/messages`);
-                setMessages(res.data.data);
-            } catch {
-                // silent — chat starts empty
-            } finally {
-                setLoading(false);
-            }
-        };
-        load();
-    }, [roomId]);
 
     // Listen for incoming messages
     useEffect(() => {
@@ -178,10 +160,8 @@ export default function Room() {
 
     useEffect(() => {
         if (!socket) return;
-        
         socket.on("room-state", ({ code, language }) => {
             if (language) setLanguage(language);
-            
             if (code) {
                 if (editorRef.current) {
                     // Editor already mounted, apply immediately
@@ -191,8 +171,7 @@ export default function Room() {
                     pendingState.current = code;
                 }
             }
-        });
-
+        })
         return () => socket.off("room-state");
     }, [socket]);
 

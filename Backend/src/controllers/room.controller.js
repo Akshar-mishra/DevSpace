@@ -10,9 +10,6 @@ export const createRoom = asyncHandler(async (req, res) => {
     if (!name || !type) {
         throw new ApiErrors(400, "Room name and type are required");
     }
-    if (type === 'friendly_room' ) {
-        throw new ApiErrors(400, "Friendly rooms require a mode (compete or collab)");
-    }
 
     const inviteLink = crypto.randomBytes(4).toString("hex");
 
@@ -28,7 +25,10 @@ export const createRoom = asyncHandler(async (req, res) => {
 
     if (!room) throw new ApiErrors(500, "Failed to create room");
 
-    res.status(201).json(new ApiResponse(201, room, "Room created successfully"));
+    res.status(201)
+    .json(
+        new ApiResponse(201, room, "Room created successfully")
+    );
 });
 
 export const joinRoom = asyncHandler(async (req, res) => {
@@ -40,7 +40,7 @@ export const joinRoom = asyncHandler(async (req, res) => {
 
     const room = await Room.findOne({ inviteLink });
     if (!room){
-         throw new ApiErrors(404, "Invalid invite link or room does not exist");
+        throw new ApiErrors(404, "Invalid invite link or room does not exist");
     }
     
     if (room.status === 'ended') throw new ApiErrors(403, "This session has already ended.");
@@ -56,7 +56,10 @@ export const joinRoom = asyncHandler(async (req, res) => {
     room.participants.push(req.user._id);
     await room.save({ validateBeforeSave: false });
 
-    res.status(200).json(new ApiResponse(200, room, "Successfully joined the room"));
+    res.status(200)
+    .json(
+        new ApiResponse(200, room, "Successfully joined the room")
+    );
 });
 
 

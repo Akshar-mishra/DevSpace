@@ -22,6 +22,11 @@ import room from "./routes/room.routes.js"
 app.use("/api/v1/rooms",room)
 
 
+import problemRouter from "./routes/problem.routes.js";
+app.use("/api/v1/problems", problemRouter);
+
+
+
 app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;
     res.status(statusCode).json({

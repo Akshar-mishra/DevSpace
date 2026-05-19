@@ -36,13 +36,12 @@ export const initializeSocket = (httpServer) => {
 
     // Connection  //socket=client 
     io.on("connection", (socket) => {
-
         // Room join/leave  (socket io's room)
         socket.on("join-room", (roomId) => {
             socket.join(roomId);
             socket.to(roomId).emit("user-joined", { userId: socket.user._id });
 
-            // 👇 This is the fix — send current state to the joining user
+            //send current state to the joining user
             const state = roomCodeState.get(roomId);
             if (state) {
                 socket.emit("room-state", state); // only to this socket

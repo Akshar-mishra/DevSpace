@@ -5,12 +5,10 @@ import { AuthContext } from "./AuthContext";
 const SocketContext = createContext();
 
 export const SocketProvider = ({ children }) => {
-    
     const { user } = useContext(AuthContext);
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-
         if (user) {
             // io() creates a new connection to the backend.
             const socketInstance = io(import.meta.env.VITE_BACKEND_URL, {withCredentials: true});
