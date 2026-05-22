@@ -40,7 +40,7 @@ export const registerUser = asyncHandler(async (req, res) => {
         name,
         email,
         password,
-        role: role || "Member"
+        role: role.toLowerCase() || "Member"
     })
 
     const createdUser = await User.findById(user._id).select("-password -refreshToken")

@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { createProblem } from "../controllers/problem.controller.js"
+import {createProblem} from "../controllers/problem.controller.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js"
 import { restrictToInterviewer } from "../middlewares/role.middleware.js"
 

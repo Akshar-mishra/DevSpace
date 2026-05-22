@@ -2,6 +2,8 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import { ApiErrors } from "../utils/ApiErrors.js";
+import { Problem } from "../models/problem.model.js";
+import { Room}  from "../models/room.model.js"
 
 export const initializeSocket = (httpServer) => {
 
@@ -78,6 +80,42 @@ export const initializeSocket = (httpServer) => {
             
         });
 
+        //problem generation trigger from interviewer
+        socket.on("problem-generated", async ({ roomId, problemId }) => {
+            try {
+                if (!roomId || !problemId) {
+                    socket.emit("problem-error", { message: "Missing roomId or problemId" });
+                    return;
+                }
+                
+                const problem = await Problem.findById(problemId)
+                                        .select("-testCases -title -createdBy -createdAt -updatedAt")
+                if(!problem){
+                    socket.emit("problem-error", { message: "Problem not found in Database" });
+                    return;
+                }
+                
+                // ✅ ADD THIS - Save problem to Room document
+                
+                await Room.findByIdAndUpdate(
+                    roomId,
+                    { problem: problemId },
+                    { new: true }
+                );
+                
+                // Update roomCodeState for late joiners
+                const currentState = roomCodeState.get(roomId) || {}
+                roomCodeState.set(roomId, {
+                    ...currentState,
+                    problem
+                });
+                
+                io.to(roomId).emit("sync-problem", problem);
+            } catch (error) {
+                console.error("Socket Problem Sync Error:", error);
+                socket.emit("problem-error", { message: "Failed to sync problem" });
+            }
+        });
 
         // Disconnect cleanup 
         socket.on("disconnecting", () => {

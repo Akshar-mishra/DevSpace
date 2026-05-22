@@ -72,8 +72,6 @@ export const generateProblemPayload = async (problemName) => {
         
     } catch (error) {
         console.error("Gemini Service Error:", error);
-        // We throw a standard Error here so the Controller's asyncHandler can catch it
-        // and convert it into an ApiError.
         throw new Error("Failed to generate problem from AI Engine.");
     }
 };

@@ -22,8 +22,11 @@ import room from "./routes/room.routes.js"
 app.use("/api/v1/rooms",room)
 
 
-import problemRouter from "./routes/problem.routes.js";
+import problemRouter from "./routes/problem.routes.js"
 app.use("/api/v1/problems", problemRouter);
+
+import codeRouter from "./routes/code.routes.js"
+app.use("/api/v1/codes",codeRouter)
 
 
 

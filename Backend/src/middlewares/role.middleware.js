@@ -7,7 +7,7 @@ export const restrictToInterviewer = asyncHandler(async (req, res, next) => {
         throw new ApiErrors(401, "Unauthorized request")
     }
 
-    if (req.user.role !== "Interviewer") { 
+    if (req.user.role !== "interviewer") { 
         throw new ApiErrors(403, "Forbidden: Only Interviewers can generate problems")
     }
     next();
