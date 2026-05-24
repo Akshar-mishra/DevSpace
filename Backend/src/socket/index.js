@@ -5,13 +5,14 @@ import { ApiErrors } from "../utils/ApiErrors.js";
 import { Problem } from "../models/problem.model.js";
 import { Room}  from "../models/room.model.js"
 
+export const roomCodeState = new Map()
+
 export const initializeSocket = (httpServer) => {
 
     const io = new Server(httpServer, {
         cors: { origin: "http://localhost:5173", credentials: true }
     });
     
-    const roomCodeState = new Map();
     // Auth middleware 
     io.use((socket, next) => {
         try {
@@ -50,22 +51,28 @@ export const initializeSocket = (httpServer) => {
             }
         });
 
-        // Code sync 
-        socket.on("code-change", ({ roomId, code }) => {
-            roomCodeState.set(roomId, { 
-                ...roomCodeState.get(roomId), 
-                code 
-            });
-            socket.to(roomId).emit("code-update", code);
+        // Code sync
+        socket.on("code-change", ({ roomId, problemId, code }) => {
+            if (!roomId || !problemId) return;
+            const currentState = roomCodeState.get(roomId) || { codes: {}, languages: {} };
+            
+            if (!currentState.codes) currentState.codes = {};
+            currentState.codes[problemId] = code;
+            
+            roomCodeState.set(roomId, currentState);
+            socket.to(roomId).emit("code-update", { problemId, code });
         });
 
-        //Language change — broadcast to whole room so everyone's Monaco switches
-        socket.on("language-change", ({ roomId, language }) => {
-            roomCodeState.set(roomId, { 
-                ...roomCodeState.get(roomId), 
-                language 
-            });
-            socket.to(roomId).emit("language-update", language);
+        // Language change
+        socket.on("language-change", ({ roomId, problemId, language }) => {
+            if (!roomId || !problemId) return;
+            const currentState = roomCodeState.get(roomId) || { codes: {}, languages: {} };
+            
+            if (!currentState.languages) currentState.languages = {};
+            currentState.languages[problemId] = language;
+            
+            roomCodeState.set(roomId, currentState);
+            socket.to(roomId).emit("language-update", { problemId, language });
         });
 
         // Chat 
@@ -80,42 +87,28 @@ export const initializeSocket = (httpServer) => {
             
         });
 
-        //problem generation trigger from interviewer
-        socket.on("problem-generated", async ({ roomId, problemId }) => {
-            try {
-                if (!roomId || !problemId) {
-                    socket.emit("problem-error", { message: "Missing roomId or problemId" });
-                    return;
-                }
-                
-                const problem = await Problem.findById(problemId)
-                                        .select("-testCases -title -createdBy -createdAt -updatedAt")
-                if(!problem){
-                    socket.emit("problem-error", { message: "Problem not found in Database" });
-                    return;
-                }
-                
-                // ✅ ADD THIS - Save problem to Room document
-                
-                await Room.findByIdAndUpdate(
-                    roomId,
-                    { problem: problemId },
-                    { new: true }
-                );
-                
-                // Update roomCodeState for late joiners
-                const currentState = roomCodeState.get(roomId) || {}
-                roomCodeState.set(roomId, {
-                    ...currentState,
-                    problem
-                });
-                
-                io.to(roomId).emit("sync-problem", problem);
-            } catch (error) {
-                console.error("Socket Problem Sync Error:", error);
-                socket.emit("problem-error", { message: "Failed to sync problem" });
-            }
+        // Broadcast new room state to the candidate
+        socket.on("notify-new-problem", ({ roomId, updatedRoomData }) => {
+            if (!roomId || !updatedRoomData) return;
+            
+            // Send the fresh room data to everyone EXCEPT the sender
+            socket.to(roomId).emit("room-updated", updatedRoomData);
         });
+
+        socket.on("problem-selected", async({roomId,problemId})=>{
+            if (!roomId || !problemId) {
+                socket.emit("problem-error", { message: "Missing roomId or problemId" });
+                return;
+            }
+             try {
+                const problem = await Problem.findById(problemId)
+                                            .select("-testCases -createdBy -createdAt -updatedAt")
+                io.to(roomId).emit("problem-loaded", problem)
+            } catch (error) {
+                socket.emit("problem-error", { message: "Failed to load problem" })
+            }
+
+        })
 
         // Disconnect cleanup 
         socket.on("disconnecting", () => {
@@ -125,7 +118,14 @@ export const initializeSocket = (httpServer) => {
                 }
             }
         });
-        socket.on("end-session", ({ roomId }) => {
+        // 🚨 Phase 3: The Lockdown Signal
+        socket.on("trigger-end-session", ({ roomId }) => {
+            if (!roomId) return;
+            
+            // Broadcast to everyone (Candidate) that the session is dead
+            io.to(roomId).emit("interview-ended");
+            
+            // Now it is safe to wipe the server RAM
             roomCodeState.delete(roomId);
         });
         socket.on("disconnect", () => {

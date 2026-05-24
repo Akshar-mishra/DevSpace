@@ -4,7 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler.js"
 import { Problem } from "../models/problem.model.js"
 import { generateProblemPayload } from "../services/gemini.service.js"
 
-/*
+
 export const createProblem = asyncHandler( async (req,res)=>{
     const {problemName} = req.body
     if(!problemName || problemName.trim() === ""){
@@ -20,20 +20,18 @@ export const createProblem = asyncHandler( async (req,res)=>{
         throw new ApiErrors(500, "AI Engine returned an incomplete problem structure.");
     }
 
-    const problem= await Problem.create({
-        ...problemData,
-        generatedBy:req.user._id
-    })
+    const problem= await Problem.create({...problemData,generatedBy:req.user._id})
     if (!problem) {
-         throw new ApiErrors(500, "Failed to save the generated problem to the database");
+        throw new ApiErrors(500, "Failed to save the generated problem to the database");
     }
 
     return res.status(200)
     .json(
         new ApiResponse(200,problem,"problem generated success")
     )
-})  */
+})  
 
+    /*
     export const createProblem = asyncHandler(async (req,res)=>{
     const {problemName} = req.body
     if(!problemName || problemName.trim() === ""){

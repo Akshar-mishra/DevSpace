@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { generateProblem } from "../services/problem.service";
+import axios from "axios";
 
 export default function ProblemGeneratorModal({ 
     isOpen, 
@@ -24,20 +24,15 @@ export default function ProblemGeneratorModal({
 
         try {
             // Call backend to generate problem via Gemini
-            const apiResponse = await generateProblem(trimmed);
-            
-            if (!apiResponse.data || !apiResponse.data._id) {
-                throw new Error("Invalid response from server");
-            }
-
-            const problemId = apiResponse.data._id;
-
-            // Emit via Socket.io to sync problem across room
-            socket.emit("problem-generated", { roomId, problemId });
+            const response = await axios.post(
+                `/api/v1/rooms/${roomId}/add-problem`,
+                { problemName: trimmed },
+                { withCredentials: true }
+            )
 
             // Clear and close
             setInputValue("");
-            onProblemGenerated?.();
+            onProblemGenerated?.(response.data.data);
             onClose();
         } catch (err) {
             const msg = 

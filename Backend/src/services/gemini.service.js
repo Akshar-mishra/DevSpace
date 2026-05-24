@@ -62,9 +62,8 @@ export const generateProblemPayload = async (problemName) => {
                 responseMimeType: "application/json", // Forces pure JSON output
                 temperature: 0.0, // Enforces determinism; prevents creative hallucinations
             }
-        });
-
-        // 4. Parse and return the payload
+        })
+        
         const rawJsonString = response.text;
         const problemData = JSON.parse(rawJsonString);
         

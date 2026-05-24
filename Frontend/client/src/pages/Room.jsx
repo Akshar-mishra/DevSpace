@@ -141,7 +141,12 @@ export default function Room() {
     const [activeProblem, setActiveProblem] = useState(null)
     const [generatorOpen, setGeneratorOpen] = useState(false)
     
-    const hasEdited      = useRef({ cpp: false, java: false, python: false })
+    const hasEdited      = useRef({}) // Tracks edits per problem: { [problemId]: { python: true } }
+    const localCodeCache = useRef({}) // Stores code for ALL problems in the background
+    const activeProblemRef = useRef(activeProblem)
+    const languageRef      = useRef(language)
+    useEffect(() => { activeProblemRef.current = activeProblem }, [activeProblem])
+    useEffect(() => { languageRef.current = language }, [language])
 
     const editorRef      = useRef(null)
     const isRemoteUpdate = useRef(false)
@@ -165,57 +170,81 @@ export default function Room() {
         return () => { cancelled = true }
     }, [roomId, navigate])
 
-
-    // Master Socket Listener (Data fetching only, no UI side-effects here)
+// 1. MASTER SOCKET LISTENER (Bulletproof Edition)
     useEffect(() => {
         if (!socket) return
         socket.on("room-state", (state) => {
-            if (state.language){
-                setLanguage(state.language)
-            }
-            if (state.code) {
-                if (editorRef.current){
-                     editorRef.current.setValue(state.code)
+            if (state?.codes) {
+                localCodeCache.current = state.codes
+                const currProblem = activeProblemRef.current;
+                if (currProblem && editorRef.current && state.codes[currProblem._id] !== undefined) {
+                    isRemoteUpdate.current = true
+                    editorRef.current.setValue(state.codes[currProblem._id])
+                    setTimeout(() => { isRemoteUpdate.current = false }, 0)
                 }
-                else pendingState.current = state.code
             }
-            if (state.problem) setActiveProblem(state.problem)
         })
 
-        socket.on("sync-problem", (problem) => {
-            console.log("✅ SYNC-PROBLEM received:", problem)
-            setActiveProblem(problem)
+        socket.on("code-update", ({ problemId, code }) => {
+            const currProblem = activeProblemRef.current;
+            localCodeCache.current[problemId] = code;
+            
+            const isSameProblem = currProblem && String(currProblem._id) === String(problemId);
+            
+            if (isSameProblem && editorRef.current) {
+                if (editorRef.current.getValue() !== code) {
+                    isRemoteUpdate.current = true;
+                    const position = editorRef.current.getPosition();
+                    editorRef.current.setValue(code ?? "");
+                    if (position) editorRef.current.setPosition(position);
+                    setTimeout(() => { isRemoteUpdate.current = false }, 0);
+                }
+            }
         })
-        
-        socket.on("problem-error", (err) => {
-            console.error("Problem Error:", err.message)
-            // TODO: Replace with Toast Notification later
+
+        socket.on("language-update", ({ problemId, language }) => {
+            const currProblem = activeProblemRef.current;
+            if (currProblem && String(currProblem._id) === String(problemId)) {
+                setLanguage(language);
+            }
+        })
+
+        socket.on("room-updated", (updatedRoomData) => setRoomData(updatedRoomData))
+
+        socket.on("interview-ended", () => {
+            setRoomData(prev => ({ ...prev, status: "ended" }));
+            alert("The interviewer has concluded this session. The editor is now locked.");
         })
 
         return () => {
             socket.off("room-state")
-            socket.off("sync-problem")
-            socket.off("problem-error")
+            socket.off("code-update")
+            socket.off("language-update")
+            socket.off("room-updated")
+            socket.off("interview-ended")
         }
-    }, [socket])
+    }, [socket, roomData])
 
-    // Boilerplate Injector Hook
+    // 2. THE SWAPPER (Handles switching questions safely)
     useEffect(() => {
-        if (activeProblem && activeProblem.boilerplates) {
-            const boilerplateCode = activeProblem.boilerplates[language]
-            
-            // Only inject if it exists AND the user hasn't typed in this language yet
-            if (boilerplateCode && !hasEdited.current[language]) {
-                if (editorRef.current) {
-                    isRemoteUpdate.current = true // Prevent emitting to socket
-                    editorRef.current.setValue(boilerplateCode)
-                    setTimeout(() => { isRemoteUpdate.current = false }, 0)
-                } else {
-                    pendingState.current = boilerplateCode
-                }
+        if (!activeProblem || !editorRef.current) return;
+
+        const pId = String(activeProblem._id);
+        const savedCode = localCodeCache.current[pId];
+
+        isRemoteUpdate.current = true; // Block socket emits while changing UI
+
+        if (savedCode !== undefined) {
+            editorRef.current.setValue(savedCode);
+        } else {
+            const boilerplate = activeProblem.boilerplates?.[language] || DEFAULT_BOILERPLATE;
+            if (!hasEdited.current[pId]?.[language]) {
+                editorRef.current.setValue(boilerplate);
             }
         }
-    }, [activeProblem, language])
+
+        setTimeout(() => { isRemoteUpdate.current = false }, 0);
+    }, [activeProblem, language]);
 
     // Join socket room
     useEffect(() => {
@@ -236,33 +265,6 @@ export default function Room() {
         return () => { socket.off("user-joined", onJoined); socket.off("user-left", onLeft) }
     }, [socket])
 
-    // Remote code sync
-    useEffect(() => {
-        if (!socket) return
-        const onCodeUpdate = (newCode) => {
-            if (!shouldShareEditor(roomData) || !editorRef.current) return
-            isRemoteUpdate.current = true
-            const position  = editorRef.current.getPosition()
-            const model     = editorRef.current.getModel()
-            const fullRange = model?.getFullModelRange()
-            if (fullRange) {
-                editorRef.current.executeEdits("remote-sync", [{ range: fullRange, text: newCode ?? "" }])
-            } else {
-                editorRef.current.setValue(newCode ?? "")
-            }
-            if (position) editorRef.current.setPosition(position)
-            setTimeout(() => { isRemoteUpdate.current = false }, 0)
-        }
-        socket.on("code-update", onCodeUpdate)
-        return () => socket.off("code-update", onCodeUpdate)
-    }, [socket, roomData])
-
-    // Remote language sync
-    useEffect(() => {
-        if (!socket) return
-        socket.on("language-update", setLanguage)
-        return () => socket.off("language-update", setLanguage)
-    }, [socket])
 
     const handleEditorDidMount = useCallback((editor) => {
         editorRef.current = editor
@@ -272,21 +274,82 @@ export default function Room() {
             pendingState.current = null
         }
     }, [])
-
+  
     const handleEditorChange = (value) => {
-        if (isRemoteUpdate.current) return
-        hasEdited.current[language] = true 
-        if (!socket || !roomId || !shouldShareEditor(roomData)) return  
-        socket.emit("code-change", { roomId, code: value ?? "" })   
-    }    
+        const currProblem = activeProblemRef.current;
+        const currLang = languageRef.current;
+        
+        if (isRemoteUpdate.current || !currProblem) return;
+        
+        if (!hasEdited.current[currProblem._id]) hasEdited.current[currProblem._id] = {};
+        hasEdited.current[currProblem._id][currLang] = true;
+        
+        localCodeCache.current[currProblem._id] = value;
+        
+        if (socket && roomId && shouldShareEditor(roomData)) {
+            socket.emit("code-change", { roomId, problemId: currProblem._id, code: value ?? "" });
+        }
+    }
 
     const handleLanguageChange = (e) => {
-        const lang = e.target.value
-        setLanguage(lang)
-        if (socket && roomId) socket.emit("language-change", { roomId, language: lang })
+        const lang = e.target.value;
+        setLanguage(lang); 
+        
+        const currProblem = activeProblemRef.current;
+        if (socket && roomId && currProblem) {
+            socket.emit("language-change", { roomId, problemId: currProblem._id, language: lang });
+        }
     }
 
 
+    //showing candidate problems
+    const [selectedProblem, setSelectedProblem] = useState(null)
+
+    useEffect(() => {
+        if (roomData?.problems && roomData.problems.length > 0) {
+            setSelectedProblem(roomData.problems[0])
+        }
+    }, [roomData])
+    useEffect(() => {
+        console.log("🔍 roomData.problems:", roomData?.problems)
+        console.log("🔍 activeProblem:", activeProblem)
+        if (roomData?.problems && roomData.problems.length > 0 && !activeProblem) {
+            const firstProblem = roomData.problems[0]
+            console.log("✅ Setting firstProblem:", firstProblem)
+            setActiveProblem(firstProblem)
+            setSelectedProblem(firstProblem)
+        }
+    }, [roomData?.problems, activeProblem])
+
+    const handleProblemChange = (e) => {
+        const problemId = e.target.value
+        const problem = roomData.problems.find(p => p._id === problemId)
+        setSelectedProblem(problem)
+        setActiveProblem(problem) 
+        if (socket) {
+            socket.emit("problem-selected", { roomId, problemId })
+        }
+    }
+
+    useEffect(() => {
+        if (!socket) return
+        socket.on("problem-loaded", (problem) => {
+            setActiveProblem(problem)
+        })
+        return () => socket.off("problem-loaded")
+    }, [socket])
+
+    useEffect(() => {
+        if (roomData?.problems && roomData.problems.length > 0 && !activeProblem) {
+            const firstProblem = roomData.problems[0]
+            setActiveProblem(firstProblem)
+            setSelectedProblem(firstProblem)
+        }
+    }, [roomData?.problems, activeProblem])
+
+
+    
+    // Running code
     const [isExecuting, setIsExecuting] = useState(false)
     const [executionResults, setExecutionResults] = useState(null)
     const [executionError, setExecutionError] = useState(null)
@@ -304,11 +367,16 @@ export default function Room() {
             return;
         }
 
+        if (!selectedProblem) {
+            setExecutionError("Please select a problem first");
+            return;
+        }
+
         setIsExecuting(true);
         setExecutionError(null);
         setExecutionResults(null);
         try {
-            const response = await runCodeService(roomId, mappedLangId, currentCode);
+            const response = await runCodeService(roomId, mappedLangId, currentCode, selectedProblem._id);
             setExecutionResults(response.data);
         } catch (error) {
             const errorMessage = error.response?.data?.message || "Execution Server Offline";
@@ -317,6 +385,8 @@ export default function Room() {
             setIsExecuting(false);
         }
     }
+
+    
 
 
     if (!roomData) {
@@ -353,6 +423,7 @@ export default function Room() {
                         {" · "}<span className="capitalize">{roomData.status}</span>
                     </p>
                 </div>
+                
 
                 <div className="flex items-center gap-2 shrink-0">
                     {/* Language selector */}
@@ -366,6 +437,21 @@ export default function Room() {
                             <option key={l.value} value={l.value}>{l.label}</option>
                         ))}
                     </select>
+
+                    {roomData?.problems && roomData.problems.length > 0 && (
+                        <select
+                            value={selectedProblem?._id || ""}
+                            onChange={handleProblemChange}
+                            className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-blue-500"
+                        >
+                            <option value="">Select Problem</option>
+                            {roomData.problems.map(p => (
+                                <option key={p._id} value={p._id}>
+                                    {p.title}
+                                </option>
+                            ))}
+                        </select>
+                    )}
 
                     {/* Online count */}
                     <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-gray-800 rounded-full border border-gray-700">
@@ -429,6 +515,32 @@ export default function Room() {
                             }`}
                         >
                             {isExecuting ? "Executing..." : "▶ Run Code"}
+                        </button>
+                    )}
+
+                    {/* END SESSION BUTTON - Only for Interviewer */}
+                    {roomData.type === "interview_room" && user?.role === "interviewer" && roomData.status !== "ended" && (
+                        <button
+                            onClick={async () => {
+                                if(window.confirm("Are you sure you want to end this interview? All code will be locked and saved.")) {
+                                        try {
+                                            // ✨ THE FAIL-SAFE: Send the exact local cache to the backend
+                                            const res = await api.put(`/rooms/${roomId}/end`, {
+                                                finalCache: localCodeCache.current
+                                            });
+                                            
+                                            setRoomData(res.data.data); // Update locally
+                                            
+                                            // Trigger the room lockdown
+                                            socket.emit("trigger-end-session", { roomId });
+                                        } catch (err) {
+                                            console.error("Failed to end session", err);
+                                        }
+                                    }
+                            }}
+                            className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-red-600 hover:bg-red-500 shadow hover:shadow-red-900/50 transition-all"
+                        >
+                            🛑 End Session
                         </button>
                     )}
                 </div>
@@ -585,8 +697,22 @@ export default function Room() {
             <ProblemGeneratorModal
                 isOpen={generatorOpen}
                 onClose={() => setGeneratorOpen(false)}
-                onProblemGenerated={() => {
-                    console.log("Problem generated and synced to room");
+                onProblemGenerated={(updatedRoomData) => {
+                    // 1. Instantly update the interviewer's UI
+                    setRoomData(updatedRoomData);
+                    
+                    // 2. Select the newly added problem automatically
+                    const newProblem = updatedRoomData.problems[updatedRoomData.problems.length - 1];
+                    setActiveProblem(newProblem);
+                    setSelectedProblem(newProblem);
+
+                    // 3. Broadcast to the candidate so their UI updates without refreshing
+                    if (socket) {
+                        socket.emit("notify-new-problem", { 
+                            roomId, 
+                            updatedRoomData 
+                        });
+                    }
                 }}
                 socket={socket}
                 roomId={roomId}

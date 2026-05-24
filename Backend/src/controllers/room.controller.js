@@ -1,8 +1,12 @@
+import { Problem } from "../models/problem.model.js"
 import { Room } from "../models/room.model.js"
+import { Session } from "../models/session.model.js"
+import { generateProblemPayload } from "../services/gemini.service.js"
 import { ApiErrors } from "../utils/ApiErrors.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import crypto from "crypto"
+import { roomCodeState } from "../socket/index.js";
 
 export const createRoom = asyncHandler(async (req, res) => {
     const { name, type, mode, isPublic, maxParticipants } = req.body
@@ -66,12 +70,14 @@ export const joinRoom = asyncHandler(async (req, res) => {
 export const getRoomById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const room = await Room.findById(id).populate("participants", "name email role isOnline");
+    const room = await Room.findById(id)
+        .populate("participants", "name email role isOnline")
+        .populate("problems");
+    
     if (!room) throw new ApiErrors(404, "Room not found or has been deleted");
 
     return res.status(200).json(new ApiResponse(200, room, "Room data fetched successfully"));
 });
-
 
 export const getMyRooms = asyncHandler(async (req, res) => {
     const rooms = await Room.find({ participants: req.user._id })
@@ -81,3 +87,128 @@ export const getMyRooms = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, rooms, "Rooms fetched successfully"));
 });
 
+
+export const addProblemToRoom = asyncHandler(async (req, res) => {
+    const { roomId } = req.params;
+    const { problemName } = req.body;
+    
+    if (!problemName || problemName.trim() === "") {
+        throw new ApiErrors(400, "Problem name is required");
+    }
+
+    const room = await Room.findById(roomId);
+    if (!room) {
+        throw new ApiErrors(404, "Room not found");
+    }
+
+    if (!room.createdBy.equals(req.user._id)) {
+        throw new ApiErrors(403, "Only room creator can add problems");
+    }
+
+    // ✨ DB CACHING LOGIC ✨
+    // 1. Search the DB for an exact (but case-insensitive) match of the problem title
+    let problem = await Problem.findOne({ 
+        title: { $regex: new RegExp(`^${problemName.trim()}$`, "i") } 
+    });
+
+    // 2. If found, skip AI. If not found, generate it!
+    if (!problem) {
+        console.log(`[AI Triggered] Generating new problem: "${problemName}"...`);
+        const problemData = await generateProblemPayload(problemName);
+        
+        if (!problemData || !problemData.boilerplates) {
+            throw new ApiErrors(500, "Failed to generate problem via AI");
+        }
+        
+        problem = await Problem.create({
+            ...problemData, 
+            generatedBy: req.user._id
+        });
+    } else {
+        console.log(`[Cache Hit] Problem "${problemName}" loaded instantly from DB!`);
+    }
+
+    // 3. Add to the room (Prevent adding the exact same problem twice to one room)
+    if (!room.problems) {
+        room.problems = [];
+    }
+
+    if (!room.problems.includes(problem._id)) {
+        room.problems.push(problem._id);
+        await room.save({ validateBeforeSave: false });
+    }
+
+    // Fetch the updated room data to return to the frontend
+    const updatedRoom = await Room.findById(roomId).populate("problems");
+    
+    return res.status(201).json(
+        new ApiResponse(201, updatedRoom, "Problem added to room successfully")
+    );
+});
+
+export const deleteRoom = asyncHandler(async (req, res) => {
+    const {roomId} = req.params
+    const room = await Room.findById(roomId)
+    if (!room) {
+        throw new ApiErrors(404, "Room not found")
+    }
+
+    if (!room.createdBy.equals(req.user._id)) {
+        throw new ApiErrors(403, "Only room creator can delete")
+    }
+
+    await Room.findByIdAndDelete(roomId)
+    await Session.deleteMany({room:roomId})
+
+    return res.status(200)
+    .json(
+        new ApiResponse(200, null, "Room deleted successfully")
+    )
+
+})
+
+export const endRoomSession = asyncHandler(async (req, res) => {
+    const { roomId } = req.params;
+    const { finalCache } = req.body; // ✨ Extract the fail-safe payload from frontend
+
+    const room = await Room.findById(roomId);
+    if (!room) throw new ApiErrors(404, "Room not found");
+    if (!room.createdBy.equals(req.user._id)) throw new ApiErrors(403, "Only the room creator can end the session");
+    if (room.status === 'ended') throw new ApiErrors(400, "Session is already ended");
+
+    // 1. THE SNAPSHOT: Merge socket RAM with the Interviewer's exact local cache
+    const currentState = roomCodeState.get(roomId);
+    const ramCodes = currentState?.codes || {};
+    const ramLanguages = currentState?.languages || {};
+
+    // 🌟 The Ultimate Override: Frontend cache overwrites anything in RAM
+    const mergedCodes = { ...ramCodes, ...(finalCache || {}) };
+
+    const codeSnapshots = Object.keys(mergedCodes).map(problemId => ({
+        problem: problemId,
+        language: ramLanguages[problemId] || 'cpp', // Fallback
+        code: mergedCodes[problemId]
+    }));
+
+    const candidateId = room.participants.find(pId => pId.toString() !== req.user._id.toString());
+
+    // 2. PERMANENT SAVE
+    if (candidateId) {
+        await Session.create({
+            room: roomId,
+            interviewer: req.user._id,
+            candidate: candidateId,
+            codeSnapshots,
+            endedAt: Date.now()
+        });
+    }
+
+    // 3. DATABASE LOCKDOWN
+    room.status = 'ended';
+    room.endedAt = Date.now();
+    await room.save({ validateBeforeSave: false });
+
+    return res.status(200).json(
+        new ApiResponse(200, room, "Session ended and candidate code securely saved")
+    );
+});

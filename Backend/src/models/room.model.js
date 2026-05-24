@@ -41,10 +41,12 @@ const roomSchema = new Schema(
             type: Number,
             default: 2
         },
-        problem: {
+        problems:[ 
+            {
             type: Schema.Types.ObjectId,
-            ref: "Problem" // We will build this model in Phase 3
-        },
+            ref: "Problem" 
+            }
+        ],
         endedAt: {
             type: Date
         }
