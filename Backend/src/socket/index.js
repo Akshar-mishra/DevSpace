@@ -110,6 +110,16 @@ export const initializeSocket = (httpServer) => {
 
         })
 
+        // 🚨 Anti-Cheat: Relay tab switch warnings
+        socket.on("tab-switched", ({ roomId, candidateName }) => {
+            if (!roomId) return;
+            
+            // Broadcast the warning to everyone ELSE in the room (the Interviewer)
+            socket.to(roomId).emit("cheat-warning", {
+                message: `⚠️ ANTI-CHEAT ALERT: ${candidateName} just switched tabs or minimized the window!`
+            });
+        });
+
         // Disconnect cleanup 
         socket.on("disconnecting", () => {
             for (const room of socket.rooms) {

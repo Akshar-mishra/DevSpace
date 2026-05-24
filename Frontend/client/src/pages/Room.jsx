@@ -216,12 +216,21 @@ export default function Room() {
             alert("The interviewer has concluded this session. The editor is now locked.");
         })
 
+        // Catch Anti-Cheat warnings
+        socket.on("cheat-warning", ({ message }) => {
+            if (user?.role === "interviewer") {
+                // You can use your custom toast here, or a harsh alert
+                alert(message); 
+            }
+        });
+
         return () => {
             socket.off("room-state")
             socket.off("code-update")
             socket.off("language-update")
             socket.off("room-updated")
             socket.off("interview-ended")
+            socket.off("cheat-warning")
         }
     }, [socket, roomData])
 
@@ -265,6 +274,25 @@ export default function Room() {
         return () => { socket.off("user-joined", onJoined); socket.off("user-left", onLeft) }
     }, [socket])
 
+// 🚨 ANTI-CHEAT: Tab Switching Detection
+    useEffect(() => {
+        if (!socket || !roomId || roomData?.status === "ended") return;
+        
+        // We only want to track the candidate, not the interviewer!
+        if (user?.role === "interviewer") return;
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                // The candidate just switched tabs or minimized!
+                socket.emit("tab-switched", { 
+                    roomId, 
+                    candidateName: user?.name || "Candidate" 
+                });
+            }
+        };
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    }, [socket, roomId, roomData, user]);
 
     const handleEditorDidMount = useCallback((editor) => {
         editorRef.current = editor
