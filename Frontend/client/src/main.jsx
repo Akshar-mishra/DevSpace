@@ -15,5 +15,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </SocketProvider>
       </AuthProvider>
     </BrowserRouter>
-  </>,
+  </>
 )

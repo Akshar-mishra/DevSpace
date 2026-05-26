@@ -2,6 +2,8 @@ import { useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
+import { submitSessionFeedback } from '../services/session.service.js'
+import { getMySessions } from '../services/session.service.js'
 
 // ── tiny helpers ──────────────────────────────────────────────────────────────
 const badge = (type, mode) => {
@@ -92,6 +94,7 @@ const CreateRoomModal = ({ onClose, onCreated }) => {
         }
     };
 
+    
     return (
         <Modal title={step === 1 ? "Create a Room" : step === 2 ? "Room Arsenal" : "Room Ready!"} onClose={onClose}>
             {/* ── STEP 1: Details ── */}
@@ -332,7 +335,9 @@ const Dashboard = () => {
     const [rooms, setRooms]         = useState([]);
     const [roomsLoading, setRoomsLoading] = useState(true);
     const [modal, setModal]         = useState(null); // 'create' | 'join' | null
-    const [toast, setToast]         = useState('');
+    const [toast, setToast]         = useState('')
+
+    const [pastSessions, setPastSessions] = useState([])
 
     const showToast = (msg) => {
         setToast(msg);
@@ -393,7 +398,20 @@ const Dashboard = () => {
                 alert("Error deleting room. Check console.");
             }
         }
-    };
+    }
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            try {
+                const res = await getMySessions();
+                setPastSessions(res.data);
+            } catch (err) {
+                console.error("Failed to load history:", err);
+            }
+        };
+        fetchHistory();
+    }, []);
+
     return (
         <div className="min-h-screen bg-gray-950 text-white">
             {/* ── Toast ── */}
@@ -439,6 +457,45 @@ const Dashboard = () => {
                         className="flex items-center gap-2 px-5 py-2.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl font-semibold text-sm transition-colors">
                         <span className="text-base">🔗</span> Join Room
                     </button>
+                </div>
+
+                <div className="mt-10">
+                    <h2 className="text-xl font-bold text-white mb-6">Past Sessions</h2>
+                    
+                    {pastSessions.length === 0 ? (
+                        <div className="text-gray-500 italic">No past sessions found.</div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {pastSessions.map((session) => (
+                                <div 
+                                    key={session._id} 
+                                    onClick={() => navigate(`/session/${session._id}`)}
+                                    className="bg-gray-900 border border-gray-800 p-5 rounded-xl hover:border-purple-500 transition-all cursor-pointer group"
+                                >
+                                    <h3 className="font-bold text-white mb-1 group-hover:text-purple-400">
+                                        {session.room?.name || "Untitled Session"}
+                                    </h3>
+                                    <p className="text-xs text-gray-400 mb-4">
+                                        {new Date(session.endedAt).toLocaleDateString()}
+                                    </p>
+                                    
+                                    {/* Embedded Feedback Summary */}
+                                    {session.feedback ? (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] uppercase font-bold text-purple-500">Overall:</span>
+                                            <div className="flex gap-1">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <div key={star} className={`w-2 h-2 rounded-full ${star <= session.feedback.overall ? 'bg-yellow-500' : 'bg-gray-700'}`} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <span className="text-[10px] text-gray-600 italic">No feedback submitted</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Rooms section */}

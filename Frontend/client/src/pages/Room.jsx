@@ -7,6 +7,8 @@ import api from "../services/api"
 import { runCodeService } from "../services/code.service.js"
 import { generateProblem } from "../services/problem.service.js"
 import ProblemGeneratorModal from "../components/ProblemGeneratorModal";
+import FeedbackModal from "../components/FeedbackModal.jsx"
+import { submitSessionFeedback } from "../services/session.service.js";
 
 const DEFAULT_BOILERPLATE = "// Write your solution here\n"
 
@@ -152,6 +154,20 @@ export default function Room() {
     const isRemoteUpdate = useRef(false)
     const pendingState   = useRef(null) 
 
+    const [endTime, setEndTime] = useState(null)
+    const [timeLeft, setTimeLeft] = useState("00:00")
+
+    const [currentHint, setCurrentHint] = useState(null)
+
+    // Interviewer Panel State
+    const [interviewerNotes, setInterviewerNotes] = useState("");
+    const [hintInput, setHintInput] = useState("");
+    const [timerInput, setTimerInput] = useState("45");
+
+    //feedback
+    const [feedbackSessionId, setFeedbackSessionId] = useState(null)
+    const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
+
     // Load room
     useEffect(() => {
         let cancelled = false
@@ -170,7 +186,7 @@ export default function Room() {
         return () => { cancelled = true }
     }, [roomId, navigate])
 
-// 1. MASTER SOCKET LISTENER (Bulletproof Edition)
+// 1. MASTER SOCKET LISTENER
     useEffect(() => {
         if (!socket) return
         socket.on("room-state", (state) => {
@@ -182,8 +198,20 @@ export default function Room() {
                     editorRef.current.setValue(state.codes[currProblem._id])
                     setTimeout(() => { isRemoteUpdate.current = false }, 0)
                 }
+
+                //for timer
+                if(state?.endTime) {
+                    setEndTime(state.endTime)
+                }
             }
         })
+
+        socket.on("timer-started", ({ endTime }) => {
+                setEndTime(endTime)
+        })
+
+        //hint sys
+        socket.on("receive-hint", ({ hint }) => setCurrentHint(hint))
 
         socket.on("code-update", ({ problemId, code }) => {
             const currProblem = activeProblemRef.current;
@@ -206,7 +234,7 @@ export default function Room() {
             const currProblem = activeProblemRef.current;
             if (currProblem && String(currProblem._id) === String(problemId)) {
                 setLanguage(language);
-            }
+            } 
         })
 
         socket.on("room-updated", (updatedRoomData) => setRoomData(updatedRoomData))
@@ -292,7 +320,29 @@ export default function Room() {
         };
         document.addEventListener("visibilitychange", handleVisibilityChange);
         return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-    }, [socket, roomId, roomData, user]);
+    }, [socket, roomId, roomData, user])
+
+    //countdown timer effect
+    useEffect(()=>{
+        if(!endTime) return
+        const interval= setInterval(()=>{
+            const remaining= endTime- Date.now()
+            
+            if(remaining <= 0){
+                clearInterval(interval)
+                setTimeLeft("00:00")
+                return
+            }  
+
+            const minutes= Math.floor(remaining / 60000).toString()
+            const seconds= Math.floor((remaining % 60000) / 1000).toString() 
+            const formattedTime = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+            setTimeLeft(formattedTime)
+        },1000)
+
+        return ()=> clearInterval(interval)
+
+    },[endTime])
 
     const handleEditorDidMount = useCallback((editor) => {
         editorRef.current = editor
@@ -329,7 +379,6 @@ export default function Room() {
         }
     }
 
-
     //showing candidate problems
     const [selectedProblem, setSelectedProblem] = useState(null)
 
@@ -338,6 +387,7 @@ export default function Room() {
             setSelectedProblem(roomData.problems[0])
         }
     }, [roomData])
+    
     useEffect(() => {
         console.log("🔍 roomData.problems:", roomData?.problems)
         console.log("🔍 activeProblem:", activeProblem)
@@ -375,6 +425,21 @@ export default function Room() {
         }
     }, [roomData?.problems, activeProblem])
 
+    const handleFeedbackSubmit = async (formData) => {
+        setIsSubmittingFeedback(true);
+        try {
+            // Call the exact service you just built
+            await submitSessionFeedback(feedbackSessionId, formData);
+            
+            // Success! Now we can safely leave the room.
+            navigate("/dashboard");
+        } catch (error) {
+            console.error("Failed to submit feedback:", error);
+            alert(error.response?.data?.message || "Failed to submit feedback. Try again.");
+        } finally {
+            setIsSubmittingFeedback(false);
+        }
+    };
 
     
     // Running code
@@ -414,6 +479,7 @@ export default function Room() {
         }
     }
 
+
     
 
 
@@ -430,13 +496,6 @@ export default function Room() {
 
     const sharing     = shouldShareEditor(roomData)
     const currentLang = LANGUAGES.find(l => l.value === language) ?? LANGUAGES[0]
-
-    console.log("=== ROOM DEBUG ===")
-    console.log("roomData:", roomData)
-    console.log("user:", user)
-    console.log("roomData.type === 'interview_room':", roomData?.type === "interview_room")
-    console.log("user?.role === 'interviewer':", user?.role === "interviewer")
-    console.log("SHOW BUTTON?:", roomData?.type === "interview_room" && user?.role === "interviewer")
 
     return (
         <div className="flex flex-col bg-gray-950 text-gray-100" style={{ height: "100vh" }}>
@@ -487,6 +546,15 @@ export default function Room() {
                         <span className="text-[11px] text-gray-400">{participants.length} online</span>
                     </div>
 
+                    {/* ⏱ THE TIMER GOES HERE */}
+                    {endTime && (
+                        <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full border font-mono font-bold text-sm ${
+                            timeLeft === "00:00" ? "bg-red-900/30 border-red-500/50 text-red-400" : "bg-gray-800 border-gray-700 text-gray-200"
+                        }`}>
+                            ⏱ {timeLeft}
+                        </div>
+                    )}
+
                     {/* Invite code */}
                     <button
                         onClick={() => navigator.clipboard.writeText(roomData.inviteLink)}
@@ -507,6 +575,7 @@ export default function Room() {
                     >
                         💬 Chat
                     </button>
+                    
 
                     <button
                         onClick={() => navigate("/dashboard")}
@@ -550,21 +619,33 @@ export default function Room() {
                     {roomData.type === "interview_room" && user?.role === "interviewer" && roomData.status !== "ended" && (
                         <button
                             onClick={async () => {
-                                if(window.confirm("Are you sure you want to end this interview? All code will be locked and saved.")) {
-                                        try {
-                                            // ✨ THE FAIL-SAFE: Send the exact local cache to the backend
-                                            const res = await api.put(`/rooms/${roomId}/end`, {
-                                                finalCache: localCodeCache.current
-                                            });
-                                            
-                                            setRoomData(res.data.data); // Update locally
-                                            
-                                            // Trigger the room lockdown
-                                            socket.emit("trigger-end-session", { roomId });
-                                        } catch (err) {
-                                            console.error("Failed to end session", err);
-                                        }
+                                if (window.confirm("End this interview?")) {
+                                    try {
+                                        console.log("Sending end-session request...");
+                                        
+                                        const res = await api.put(`/rooms/${roomId}/end`, {
+                                            finalCache: localCodeCache.current,
+                                            interviewerNotes: interviewerNotes
+                                        });
+
+                                        console.log("Response received:", res.data); // 👈 THIS IS THE TRUTH
+
+                                        // Patch: Be defensive. If res.data.data.room is undefined, 
+                                        // maybe it's just res.data.data?
+                                        const room = res.data.data.room || res.data.data;
+                                        const sId = res.data.data.sessionId;
+
+                                        setRoomData(room);
+                                        socket.emit("trigger-end-session", { roomId });
+                                        setFeedbackSessionId(sId);
+                                        
+                                        console.log("Session ID set:", sId);
+                                    } catch (err) {
+                                        // This will catch the EXACT reason it's failing
+                                        console.error("API Error Details:", err.response?.data || err.message);
+                                        alert("Error: " + (err.response?.data?.message || "Unknown error"));
                                     }
+                                }
                             }}
                             className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-red-600 hover:bg-red-500 shadow hover:shadow-red-900/50 transition-all"
                         >
@@ -622,6 +703,20 @@ export default function Room() {
 
                 {/* Editor */}
                 <div className="flex flex-col flex-1 min-w-0 p-3 gap-2 ">
+
+                        {/* 💡 CANDIDATE HINT TOAST GOES HERE */}
+                        {currentHint && user?.role !== "interviewer" && (
+                            <div className="absolute top-4 right-4 z-50 w-80 bg-blue-900 border border-blue-500 shadow-2xl rounded-xl overflow-hidden animate-fade-in">
+                                <div className="bg-blue-950 px-4 py-2 border-b border-blue-800 flex justify-between items-center">
+                                    <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">💡 Hint from Interviewer</span>
+                                    <button onClick={() => setCurrentHint(null)} className="text-blue-500 hover:text-white">✕</button>
+                                </div>
+                                <div className="p-4 text-sm text-blue-100 leading-relaxed">
+                                    {currentHint}
+                                </div>
+                            </div>
+                        )}
+
                     <div className="flex-1 overflow-hidden rounded-xl border border-gray-800 bg-[#1e1e1e]" style={{ minHeight: 0 }}>
                         <Editor
                             height="100%"
@@ -719,6 +814,76 @@ export default function Room() {
                         </div>
                     </div>
                 )}
+
+                {/* 🕵️ THE INTERVIEWER PRIVATE PANEL */}
+                {roomData.type === "interview_room" && user?.role === "interviewer" && (
+                    <div className="w-80 shrink-0 flex flex-col min-h-0 py-3 pr-3">
+                        <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-gray-800 bg-gray-900 flex flex-col">
+                            <div className="px-4 py-3 border-b border-gray-800 bg-purple-900/20">
+                                <h2 className="text-sm font-bold text-purple-400 tracking-wide flex items-center gap-2">
+                                    Private Panel 
+                                </h2>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                                {/* Timer Control */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Interview Timer</label>
+                                    <div className="flex gap-2">
+                                        <input 
+                                            type="number" 
+                                            value={timerInput}
+                                            onChange={(e) => setTimerInput(e.target.value)}
+                                            className="w-20 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none"
+                                            placeholder="Mins"
+                                        />
+                                        <button 
+                                            onClick={() => {
+                                                if (!timerInput || isNaN(timerInput)) return;
+                                                socket.emit("start-timer", { roomId, durationMinutes: Number(timerInput) });
+                                            }}
+                                            className="flex-1 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-bold transition-colors"
+                                        >
+                                            Start Timer
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Hint Sender */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Push Hint</label>
+                                    <textarea 
+                                        value={hintInput}
+                                        onChange={(e) => setHintInput(e.target.value)}
+                                        placeholder="Type a hint..."
+                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none resize-none h-20"
+                                    />
+                                    <button 
+                                        onClick={() => {
+                                            if (!hintInput.trim()) return;
+                                            socket.emit("send-hint", { roomId, hint: hintInput.trim() });
+                                            setHintInput(""); 
+                                        }}
+                                        className="w-full py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-sm font-bold text-gray-300 transition-colors"
+                                    >
+                                        Send Hint
+                                    </button>
+                                </div>
+
+                                {/* Private Notes */}
+                                <div className="space-y-2 flex-1 flex flex-col min-h-[150px]">
+                                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Evaluation Notes</label>
+                                    <textarea 
+                                        value={interviewerNotes}
+                                        onChange={(e) => setInterviewerNotes(e.target.value)}
+                                        placeholder="Candidate is struggling with the nested loop..."
+                                        className="w-full flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none resize-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Problem Generator Modal */}
@@ -744,6 +909,13 @@ export default function Room() {
                 }}
                 socket={socket}
                 roomId={roomId}
+            />
+
+            {/* Feedback Modal (Triggers only when session ends) */}
+            <FeedbackModal 
+                isOpen={!!feedbackSessionId} // Opens if feedbackSessionId is not null
+                onSubmit={handleFeedbackSubmit} 
+                isSubmitting={isSubmittingFeedback} 
             />
         </div>
     )

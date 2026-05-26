@@ -7,18 +7,48 @@ const sessionSchema = new Schema(
         room: {
             type: Schema.Types.ObjectId,
             ref: "Room",
-            required: true
+            required: true,
+            index:true
         },
         interviewer: {
             type: Schema.Types.ObjectId,
             ref: "User",
-            required: true
+            required: true,
+            index:true
         },
         candidate: {
             type: Schema.Types.ObjectId,
             ref: "User",
-            required: true
+            required: true,
+            index:true
         },
+        interviewerNotes: {
+            type: String,
+            default: ""
+        },
+        feedback:{
+                communication:{
+                    type:Number,
+                    min:1,
+                    max:5
+                },
+                problemSolving:{
+                    type:Number,
+                    min:1,
+                    max:5
+                },
+                codeQuality:{
+                    type:Number,
+                    min:1,
+                    max:5
+                },
+                overall:{
+                    type:Number,
+                    min:1,
+                    max:5
+                },
+                comments:String
+            },
         codeSnapshots: [
             {
                 problem: Schema.Types.ObjectId, 
@@ -26,9 +56,6 @@ const sessionSchema = new Schema(
                 code: String
             }
         ],
-
-        // Hints given by interviewer (optional, for later)
-        // hintsGiven: [String],
         startedAt: {
             type: Date,
             default: Date.now
@@ -45,6 +72,6 @@ const sessionSchema = new Schema(
         // }
     },
     { timestamps: true }
-);
+)  
 
 export const Session = mongoose.model("Session",sessionSchema)

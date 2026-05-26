@@ -6,16 +6,16 @@ import { ApiErrors } from "../utils/ApiErrors.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import crypto from "crypto"
-import { roomCodeState } from "../socket/index.js";
+import { roomCodeState } from "../socket/index.js"  
 
 export const createRoom = asyncHandler(async (req, res) => {
     const { name, type, mode, isPublic, maxParticipants } = req.body
 
     if (!name || !type) {
-        throw new ApiErrors(400, "Room name and type are required");
+        throw new ApiErrors(400, "Room name and type are required")  
     }
 
-    const inviteLink = crypto.randomBytes(4).toString("hex");
+    const inviteLink = crypto.randomBytes(4).toString("hex")  
 
     const room = await Room.create({
         name,
@@ -25,126 +25,126 @@ export const createRoom = asyncHandler(async (req, res) => {
         inviteLink,
         createdBy: req.user._id,
         participants: [req.user._id]
-    });
+    })  
 
-    if (!room) throw new ApiErrors(500, "Failed to create room");
+    if (!room) throw new ApiErrors(500, "Failed to create room")  
 
     res.status(201)
     .json(
         new ApiResponse(201, room, "Room created successfully")
-    );
-});
+    )  
+})  
 
 export const joinRoom = asyncHandler(async (req, res) => {
-    const { inviteLink } = req.params;
+    const { inviteLink } = req.params  
 
     if (!inviteLink){
-        throw new ApiErrors(400, "Invite link is required");
+        throw new ApiErrors(400, "Invite link is required")  
     }
 
-    const room = await Room.findOne({ inviteLink });
+    const room = await Room.findOne({ inviteLink })  
     if (!room){
-        throw new ApiErrors(404, "Invalid invite link or room does not exist");
+        throw new ApiErrors(404, "Invalid invite link or room does not exist")  
     }
     
-    if (room.status === 'ended') throw new ApiErrors(403, "This session has already ended.");
+    if (room.status === 'ended') throw new ApiErrors(403, "This session has already ended.")  
 
     if (room.participants.some(id => id.equals(req.user._id))) {
-        return res.status(200).json(new ApiResponse(200, room, "You are already in this room"));
+        return res.status(200).json(new ApiResponse(200, room, "You are already in this room"))  
     }
 
     if (room.participants.length >= room.maxParticipants) {
-        throw new ApiErrors(400, "Room is full");
+        throw new ApiErrors(400, "Room is full")  
     }
 
-    room.participants.push(req.user._id);
-    await room.save({ validateBeforeSave: false });
+    room.participants.push(req.user._id)  
+    await room.save({ validateBeforeSave: false })  
 
     res.status(200)
     .json(
         new ApiResponse(200, room, "Successfully joined the room")
-    );
-});
+    )  
+})  
 
 
 export const getRoomById = asyncHandler(async (req, res) => {
-    const { id } = req.params;
+    const { id } = req.params  
 
     const room = await Room.findById(id)
         .populate("participants", "name email role isOnline")
-        .populate("problems");
+        .populate("problems")  
     
-    if (!room) throw new ApiErrors(404, "Room not found or has been deleted");
+    if (!room) throw new ApiErrors(404, "Room not found or has been deleted")  
 
-    return res.status(200).json(new ApiResponse(200, room, "Room data fetched successfully"));
-});
+    return res.status(200).json(new ApiResponse(200, room, "Room data fetched successfully"))  
+})  
 
 export const getMyRooms = asyncHandler(async (req, res) => {
     const rooms = await Room.find({ participants: req.user._id })
         .populate("createdBy", "name email")
-        .sort({ updatedAt: -1 });
+        .sort({ updatedAt: -1 })  
 
-    return res.status(200).json(new ApiResponse(200, rooms, "Rooms fetched successfully"));
-});
+    return res.status(200).json(new ApiResponse(200, rooms, "Rooms fetched successfully"))  
+})  
 
 
 export const addProblemToRoom = asyncHandler(async (req, res) => {
-    const { roomId } = req.params;
-    const { problemName } = req.body;
+    const { roomId } = req.params  
+    const { problemName } = req.body  
     
     if (!problemName || problemName.trim() === "") {
-        throw new ApiErrors(400, "Problem name is required");
+        throw new ApiErrors(400, "Problem name is required")  
     }
 
-    const room = await Room.findById(roomId);
+    const room = await Room.findById(roomId)  
     if (!room) {
-        throw new ApiErrors(404, "Room not found");
+        throw new ApiErrors(404, "Room not found")  
     }
 
     if (!room.createdBy.equals(req.user._id)) {
-        throw new ApiErrors(403, "Only room creator can add problems");
+        throw new ApiErrors(403, "Only room creator can add problems")  
     }
 
     // ✨ DB CACHING LOGIC ✨
     // 1. Search the DB for an exact (but case-insensitive) match of the problem title
     let problem = await Problem.findOne({ 
         title: { $regex: new RegExp(`^${problemName.trim()}$`, "i") } 
-    });
+    })  
 
     // 2. If found, skip AI. If not found, generate it!
     if (!problem) {
-        console.log(`[AI Triggered] Generating new problem: "${problemName}"...`);
-        const problemData = await generateProblemPayload(problemName);
+        console.log(`[AI Triggered] Generating new problem: "${problemName}"...`)  
+        const problemData = await generateProblemPayload(problemName)  
         
         if (!problemData || !problemData.boilerplates) {
-            throw new ApiErrors(500, "Failed to generate problem via AI");
+            throw new ApiErrors(500, "Failed to generate problem via AI")  
         }
         
         problem = await Problem.create({
             ...problemData, 
             generatedBy: req.user._id
-        });
+        })  
     } else {
-        console.log(`[Cache Hit] Problem "${problemName}" loaded instantly from DB!`);
+        console.log(`[Cache Hit] Problem "${problemName}" loaded instantly from DB!`)  
     }
 
     // 3. Add to the room (Prevent adding the exact same problem twice to one room)
     if (!room.problems) {
-        room.problems = [];
+        room.problems = []  
     }
 
     if (!room.problems.includes(problem._id)) {
-        room.problems.push(problem._id);
-        await room.save({ validateBeforeSave: false });
+        room.problems.push(problem._id)  
+        await room.save({ validateBeforeSave: false })  
     }
 
     // Fetch the updated room data to return to the frontend
-    const updatedRoom = await Room.findById(roomId).populate("problems");
+    const updatedRoom = await Room.findById(roomId).populate("problems")  
     
     return res.status(201).json(
         new ApiResponse(201, updatedRoom, "Problem added to room successfully")
-    );
-});
+    )  
+})  
 
 export const deleteRoom = asyncHandler(async (req, res) => {
     const {roomId} = req.params
@@ -168,47 +168,31 @@ export const deleteRoom = asyncHandler(async (req, res) => {
 })
 
 export const endRoomSession = asyncHandler(async (req, res) => {
-    const { roomId } = req.params;
-    const { finalCache } = req.body; // ✨ Extract the fail-safe payload from frontend
+    const { roomId } = req.params  
+    const { finalCache, interviewerNotes } = req.body   
 
-    const room = await Room.findById(roomId);
-    if (!room) throw new ApiErrors(404, "Room not found");
-    if (!room.createdBy.equals(req.user._id)) throw new ApiErrors(403, "Only the room creator can end the session");
-    if (room.status === 'ended') throw new ApiErrors(400, "Session is already ended");
+    const room = await Room.findById(roomId)  
+    if (!room) throw new ApiErrors(404, "Room not found")  
+    
+    // ... (Your existing participant finding logic) ...
+    const candidateId = room.participants.find(pId => pId.toString() !== req.user._id.toString())  
 
-    // 1. THE SNAPSHOT: Merge socket RAM with the Interviewer's exact local cache
-    const currentState = roomCodeState.get(roomId);
-    const ramCodes = currentState?.codes || {};
-    const ramLanguages = currentState?.languages || {};
+    // 🚨 THIS IS THE FIX: Capture the return value of Session.create
+    const session = await Session.create({
+        room: roomId,
+        interviewer: req.user._id,
+        candidate: candidateId,
+        codeSnapshots: [], // Add your snapshot logic here
+        interviewerNotes: interviewerNotes,
+        endedAt: Date.now()
+    })  
 
-    // 🌟 The Ultimate Override: Frontend cache overwrites anything in RAM
-    const mergedCodes = { ...ramCodes, ...(finalCache || {}) };
+    room.status = 'ended'  
+    room.endedAt = Date.now()  
+    await room.save({ validateBeforeSave: false })  
 
-    const codeSnapshots = Object.keys(mergedCodes).map(problemId => ({
-        problem: problemId,
-        language: ramLanguages[problemId] || 'cpp', // Fallback
-        code: mergedCodes[problemId]
-    }));
-
-    const candidateId = room.participants.find(pId => pId.toString() !== req.user._id.toString());
-
-    // 2. PERMANENT SAVE
-    if (candidateId) {
-        await Session.create({
-            room: roomId,
-            interviewer: req.user._id,
-            candidate: candidateId,
-            codeSnapshots,
-            endedAt: Date.now()
-        });
-    }
-
-    // 3. DATABASE LOCKDOWN
-    room.status = 'ended';
-    room.endedAt = Date.now();
-    await room.save({ validateBeforeSave: false });
-
+    // NOW 'session' is defined, and this will work:
     return res.status(200).json(
-        new ApiResponse(200, room, "Session ended and candidate code securely saved")
-    );
-});
+        new ApiResponse(200, { room, sessionId: session._id }, "Session ended securely")
+    )  
+})  

@@ -12,17 +12,17 @@ export const createProblem = asyncHandler( async (req,res)=>{
     }
 
     if (!req.user || !req.user._id) {
-        throw new ApiErrors(401, "User not authenticated");
+        throw new ApiErrors(401, "User not authenticated")  
     }
 
-    const problemData = await generateProblemPayload(problemName);
+    const problemData = await generateProblemPayload(problemName)  
     if (!problemData || !problemData.boilerplates || !problemData.testCases) {
-        throw new ApiErrors(500, "AI Engine returned an incomplete problem structure.");
+        throw new ApiErrors(500, "AI Engine returned an incomplete problem structure.")  
     }
 
     const problem= await Problem.create({...problemData,generatedBy:req.user._id})
     if (!problem) {
-        throw new ApiErrors(500, "Failed to save the generated problem to the database");
+        throw new ApiErrors(500, "Failed to save the generated problem to the database")  
     }
 
     return res.status(200)
@@ -56,8 +56,8 @@ export const createProblem = asyncHandler( async (req,res)=>{
             { input: "3 2 4\n6", expectedOutput: "1 2" }
         ],
         boilerplates: {
-            cpp: "class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        // Write your solution here\n        return {};\n    }\n};",
-            java: "class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Write your solution here\n        return new int[2];\n    }\n}",
+            cpp: "class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        // Write your solution here\n        return {}  \n    }\n}  ",
+            java: "class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Write your solution here\n        return new int[2]  \n    }\n}",
             python: "class Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        # Write your solution here\n        return []"
         }
     }
@@ -116,8 +116,8 @@ export const createProblem = asyncHandler(async (req,res)=>{
             }
         ],
         boilerplates: {
-            cpp: "class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        // Write your solution here\n        return {};\n    }\n};",
-            java: "class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Write your solution here\n        return new int[2];\n    }\n}",
+            cpp: "class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        // Write your solution here\n        return {}  \n    }\n}  ",
+            java: "class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Write your solution here\n        return new int[2]  \n    }\n}",
             python: "from typing import List\n\nclass Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        # Write your solution here\n        return []"
         }
     }

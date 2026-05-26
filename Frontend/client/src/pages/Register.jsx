@@ -1,49 +1,49 @@
-import { useState, useContext, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import api from '../services/api';
-import { AuthContext } from '../context/AuthContext';
+import { useState, useContext, useEffect } from 'react'  
+import { useNavigate, Link } from 'react-router-dom'  
+import api from '../services/api'  
+import { AuthContext } from '../context/AuthContext'  
 
 const Register = () => {
-    const navigate = useNavigate();
-    const { user, loading } = useContext(AuthContext);
+    const navigate = useNavigate()  
+    const { user, loading } = useContext(AuthContext)  
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         password: '',
         role: 'Member'
-    });
-    const [error, setError] = useState('');
-    const [formLoading, setFormLoading] = useState(false);
+    })  
+    const [error, setError] = useState('')  
+    const [formLoading, setFormLoading] = useState(false)  
 
     // ✅ FIX 4: Redirect if already logged in
     useEffect(() => {
         if (user && !loading) {
-            navigate('/dashboard', { replace: true });
+            navigate('/dashboard', { replace: true })  
         }
-    }, [user, loading, navigate]);
+    }, [user, loading, navigate])  
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+        setFormData({ ...formData, [e.target.name]: e.target.value })  
+    }  
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-        setFormLoading(true);
+        e.preventDefault()  
+        setError('')  
+        setFormLoading(true)  
 
         try {
-            await api.post('/users/register', formData);
+            await api.post('/users/register', formData)  
             // On success, redirect to login (user must log in)
-            navigate('/login');
+            navigate('/login')  
         } catch (err) {
-            setError(err.response?.data?.message || 'Registration failed');
+            setError(err.response?.data?.message || 'Registration failed')  
         } finally {
-            setFormLoading(false);
+            setFormLoading(false)  
         }
-    };
+    }  
 
     if (loading) {
-        return <div className="flex h-screen items-center justify-center bg-gray-900 text-white">Loading...</div>;
+        return <div className="flex h-screen items-center justify-center bg-gray-900 text-white">Loading...</div>  
     }
 
     return (
@@ -123,7 +123,7 @@ const Register = () => {
                 </p>
             </div>
         </div>
-    );
-};
+    )  
+}  
 
-export default Register;
+export default Register  

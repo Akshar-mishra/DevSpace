@@ -1,32 +1,32 @@
-import { User } from "../models/user.model.js";
-import { ApiErrors } from "../utils/ApiErrors.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
+import { User } from "../models/user.model.js"  
+import { ApiErrors } from "../utils/ApiErrors.js"  
+import { ApiResponse } from "../utils/ApiResponse.js"  
 import { asyncHandler } from "../utils/asyncHandler.js"
-import jwt from "jsonwebtoken";
+import jwt from "jsonwebtoken"  
 
 export const generateAccessAndRefreshToken = async (userId) => {
     try {
-        const user = await User.findById(userId);
+        const user = await User.findById(userId)  
 
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
+        const accessToken = user.generateAccessToken()  
+        const refreshToken = user.generateRefreshToken()  
         //inside schema wala refreshToken
-        user.refreshToken = refreshToken;
+        user.refreshToken = refreshToken  
 
-        await user.save({ validateBeforeSave: false });
+        await user.save({ validateBeforeSave: false })  
 
-        return { accessToken, refreshToken };
+        return { accessToken, refreshToken }  
 
     } catch (err) {
-        //throw new ApiErrors(401, "Something went wrong while generating tokens");
-        console.error("TOKEN ERROR:", err);
-        throw err;
+        //throw new ApiErrors(401, "Something went wrong while generating tokens")  
+        console.error("TOKEN ERROR:", err)  
+        throw err  
     }
 }
 
 export const registerUser = asyncHandler(async (req, res) => {
 
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role } = req.body  
     if ([name, email, password].some((field) => !field || field.trim() === "")) {
         throw new ApiErrors(400, "All Fields Are Required")
     }
@@ -128,7 +128,7 @@ export const refreshAccessToken = asyncHandler( async (req,res)=>{
 
 
     const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
-    const user = await User.findById(decodedToken?._id);
+    const user = await User.findById(decodedToken?._id)  
     if (!user) {
         throw new ApiErrors(401, "Invalid Refresh Token")
     }
@@ -157,13 +157,13 @@ export const refreshAccessToken = asyncHandler( async (req,res)=>{
 })
 
 export const getCurrentUser = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user._id).select("-password -refreshToken");
+    const user = await User.findById(req.user._id).select("-password -refreshToken")  
     
     if (!user) {
-        throw new ApiErrors(404, "User not found");
+        throw new ApiErrors(404, "User not found")  
     }
 
     return res.status(200).json(
         new ApiResponse(200, user, "Current user fetched successfully")
-    );
-});
+    )  
+})  

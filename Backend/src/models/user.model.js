@@ -1,5 +1,5 @@
 import mongoose,{Schema} from 'mongoose'
-import jwt from "jsonwebtoken";
+import jwt from "jsonwebtoken"  
 import bcrypt from 'bcryptjs'
 
 const userSchema= new Schema(
@@ -38,11 +38,11 @@ const userSchema= new Schema(
 //dont use ()=>{} bcs it dont allow (this.) and we need this in pre
 //async lga hai to no need of next() 
 userSchema.pre("save", async function () {
-    if (!this.isModified("password")) return ;
+    if (!this.isModified("password")) return   
 
-    this.password = await bcrypt.hash(this.password, 10);
+    this.password = await bcrypt.hash(this.password, 10)  
     
-});
+})  
 
 //check password
 userSchema.methods.isPasswordCorrect = async function(pass){

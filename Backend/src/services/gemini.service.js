@@ -1,9 +1,9 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai"  
 
 // 1. Initialize the Google Gen AI client
 // It will automatically pick up process.env.GEMINI_API_KEY if no arguments are passed, 
 // but we explicitly pass it for clarity.
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })  
 
 /**
  * Calls Gemini to generate a structured algorithm problem.
@@ -51,7 +51,7 @@ export const generateProblemPayload = async (problemName) => {
     
     Ensure you provide at least 2 examples and at least 5 hidden testCases.
     The boilerplates must just be the starter code (like LeetCode), not the full solution.
-    `;
+    `  
 
     try {
         // 3. Network Call to Gemini
@@ -60,17 +60,17 @@ export const generateProblemPayload = async (problemName) => {
             contents: prompt,
             config: {
                 responseMimeType: "application/json", // Forces pure JSON output
-                temperature: 0.0, // Enforces determinism; prevents creative hallucinations
+                temperature: 0.0, // Enforces determinism   prevents creative hallucinations
             }
         })
         
-        const rawJsonString = response.text;
-        const problemData = JSON.parse(rawJsonString);
+        const rawJsonString = response.text  
+        const problemData = JSON.parse(rawJsonString)  
         
-        return problemData;
+        return problemData  
         
     } catch (error) {
-        console.error("Gemini Service Error:", error);
-        throw new Error("Failed to generate problem from AI Engine.");
+        console.error("Gemini Service Error:", error)  
+        throw new Error("Failed to generate problem from AI Engine.")  
     }
-};
+}  

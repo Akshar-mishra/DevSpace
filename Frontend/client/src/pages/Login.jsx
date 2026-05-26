@@ -1,46 +1,46 @@
-import { useState, useContext, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import api from '../services/api';
-import { AuthContext } from '../context/AuthContext';
+import { useState, useContext, useEffect } from 'react'  
+import { useNavigate, Link } from 'react-router-dom'  
+import api from '../services/api'  
+import { AuthContext } from '../context/AuthContext'  
 
 const Login = () => {
-    const navigate = useNavigate();
-    const { setUser, user, loading } = useContext(AuthContext);
-    const [formData, setFormData] = useState({ email: '', password: '' });
-    const [error, setError] = useState('');
-    const [formLoading, setFormLoading] = useState(false);
+    const navigate = useNavigate()  
+    const { setUser, user, loading } = useContext(AuthContext)  
+    const [formData, setFormData] = useState({ email: '', password: '' })  
+    const [error, setError] = useState('')  
+    const [formLoading, setFormLoading] = useState(false)  
 
     // ✅ FIX 3: Redirect if already logged in
     useEffect(() => {
         if (user && !loading) {
-            navigate('/dashboard', { replace: true });
+            navigate('/dashboard', { replace: true })  
         }
-    }, [user, loading, navigate]);
+    }, [user, loading, navigate])  
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+        setFormData({ ...formData, [e.target.name]: e.target.value })  
+    }  
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-        setFormLoading(true);
+        e.preventDefault()  
+        setError('')  
+        setFormLoading(true)  
 
         try {
-            const response = await api.post('/users/login', formData);
+            const response = await api.post('/users/login', formData)  
             // Update global auth state
-            setUser(response.data.data.user);
+            setUser(response.data.data.user)  
             // Redirect to dashboard
-            navigate('/dashboard');
+            navigate('/dashboard')  
         } catch (err) {
-            setError(err.response?.data?.message || 'Login failed. Try again.');
+            setError(err.response?.data?.message || 'Login failed. Try again.')  
         } finally {
-            setFormLoading(false);
+            setFormLoading(false)  
         }
-    };
+    }  
 
     if (loading) {
-        return <div className="flex h-screen items-center justify-center bg-gray-900 text-white">Loading...</div>;
+        return <div className="flex h-screen items-center justify-center bg-gray-900 text-white">Loading...</div>  
     }
 
     return (
@@ -93,7 +93,7 @@ const Login = () => {
                 </p>
             </div>
         </div>
-    );
-};
+    )  
+}  
 
-export default Login;
+export default Login  
