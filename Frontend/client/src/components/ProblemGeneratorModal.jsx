@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 
 export default function ProblemGeneratorModal({ 
     isOpen, 
@@ -24,8 +24,8 @@ export default function ProblemGeneratorModal({
 
         try {
             // Call backend to generate problem via Gemini
-            const response = await axios.post(
-                `/api/v1/rooms/${roomId}/add-problem`,
+            const response = await api.post(
+                `/rooms/${roomId}/add-problem`,
                 { problemName: trimmed },
                 { withCredentials: true }
             )
@@ -105,7 +105,7 @@ export default function ProblemGeneratorModal({
                         Cancel
                     </button>
                     <button
-                        onClick={handleGenerate}
+                        onClick={()=>{handleGenerate()}}
                         disabled={loading || !inputValue.trim()}
                         className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 rounded-lg text-white font-bold transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed text-sm"
                     >

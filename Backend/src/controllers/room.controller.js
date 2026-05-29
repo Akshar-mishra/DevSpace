@@ -1,7 +1,7 @@
 import { Problem } from "../models/problem.model.js"
 import { Room } from "../models/room.model.js"
 import { Session } from "../models/session.model.js"
-import { generateProblemPayload } from "../services/gemini.service.js"
+import { generateProblemPayload } from "../services/ai.service.js"
 import { ApiErrors } from "../utils/ApiErrors.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
@@ -89,63 +89,74 @@ export const getMyRooms = asyncHandler(async (req, res) => {
 
 
 export const addProblemToRoom = asyncHandler(async (req, res) => {
-    const { roomId } = req.params  
-    const { problemName } = req.body  
+    const { roomId } = req.params   
+    const { problemName } = req.body   
     
     if (!problemName || problemName.trim() === "") {
-        throw new ApiErrors(400, "Problem name is required")  
+        throw new ApiErrors(400, "Problem name is required")   
     }
 
-    const room = await Room.findById(roomId)  
+    const room = await Room.findById(roomId)   
     if (!room) {
-        throw new ApiErrors(404, "Room not found")  
+        throw new ApiErrors(404, "Room not found")   
     }
 
     if (!room.createdBy.equals(req.user._id)) {
-        throw new ApiErrors(403, "Only room creator can add problems")  
+        throw new ApiErrors(403, "Only room creator can add problems")   
     }
 
-    // ✨ DB CACHING LOGIC ✨
-    // 1. Search the DB for an exact (but case-insensitive) match of the problem title
+    // 1. Search the DB for an exact match
     let problem = await Problem.findOne({ 
         title: { $regex: new RegExp(`^${problemName.trim()}$`, "i") } 
-    })  
+    })   
 
-    // 2. If found, skip AI. If not found, generate it!
+    // 2. Generate if not found
     if (!problem) {
-        console.log(`[AI Triggered] Generating new problem: "${problemName}"...`)  
-        const problemData = await generateProblemPayload(problemName)  
+        console.log(`[AI Triggered] Generating new problem: "${problemName}"...`)   
+        const problemData = await generateProblemPayload(problemName)   
         
         if (!problemData || !problemData.boilerplates) {
-            throw new ApiErrors(500, "Failed to generate problem via AI")  
+            throw new ApiErrors(500, "Failed to generate problem via AI")   
+        }
+
+        // 🚨 THE FIX: Catch Mongoose specifically and log the exact schema violation
+        try {
+            // Log the raw AI data so you can see exactly what Gemini returned
+            console.log("\n[AI Success] Raw Data received:", JSON.stringify(problemData, null, 2)) 
+
+            problem = await Problem.create({
+                ...problemData, 
+                generatedBy: req.user._id,
+                createdBy: req.user._id // Adding this as Mongoose likely requires it!
+            }) 
+            console.log("[DB Success] Problem saved to database!") 
+
+        } catch (dbError) {
+            console.error("\n❌ MONGOOSE VALIDATION ERROR ❌") 
+            console.error(dbError.message)  // This will tell you exactly which field failed!
+            throw new ApiErrors(500, `Database Validation Failed: ${dbError.message}`) 
         }
         
-        problem = await Problem.create({
-            ...problemData, 
-            generatedBy: req.user._id
-        })  
     } else {
-        console.log(`[Cache Hit] Problem "${problemName}" loaded instantly from DB!`)  
+        console.log(`[Cache Hit] Problem "${problemName}" loaded instantly from DB!`)   
     }
 
-    // 3. Add to the room (Prevent adding the exact same problem twice to one room)
+    // 3. Add to the room
     if (!room.problems) {
-        room.problems = []  
+        room.problems = []   
     }
 
     if (!room.problems.includes(problem._id)) {
-        room.problems.push(problem._id)  
-        await room.save({ validateBeforeSave: false })  
+        room.problems.push(problem._id)   
+        await room.save({ validateBeforeSave: false })   
     }
 
-    // Fetch the updated room data to return to the frontend
-    const updatedRoom = await Room.findById(roomId).populate("problems")  
+    const updatedRoom = await Room.findById(roomId).populate("problems")   
     
     return res.status(201).json(
         new ApiResponse(201, updatedRoom, "Problem added to room successfully")
-    )  
-})  
-
+    )   
+}) 
 export const deleteRoom = asyncHandler(async (req, res) => {
     const {roomId} = req.params
     const room = await Room.findById(roomId)

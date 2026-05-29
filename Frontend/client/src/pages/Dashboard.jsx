@@ -6,10 +6,9 @@ import { submitSessionFeedback } from '../services/session.service.js'
 import { getMySessions } from '../services/session.service.js'
 
 // ── tiny helpers ──────────────────────────────────────────────────────────────
-const badge = (type, mode) => {
+const badge = (type) => {
     if (type === 'interview_room') return { label: 'Interview', color: 'bg-violet-500/20 text-violet-300 border-violet-500/40' };
-    if (mode === 'collab')         return { label: 'Collab',    color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' };
-    return                                { label: 'Compete',   color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' };
+    else return { label: 'Collab',    color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' };
 };
 
 const statusDot = (status) => ({
@@ -114,21 +113,7 @@ const CreateRoomModal = ({ onClose, onCreated }) => {
                         </select>
                     </Field>
 
-                    {form.type === 'friendly_room' && (
-                        <Field label="Mode">
-                            <div className="grid grid-cols-2 gap-2">
-                                {['collab', 'compete'].map(m => (
-                                    <button key={m} type="button" onClick={() => set('mode', m)}
-                                        className={`py-2 rounded-lg text-sm font-medium border transition-all ${
-                                            form.mode === m ? 'bg-blue-600 border-blue-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'
-                                        }`}>
-                                        {m === 'collab' ? '🤝 Collab' : '⚔️ Compete'}
-                                    </button>
-                                ))}
-                            </div>
-                        </Field>
-                    )}
-
+                    
                     <Field label="Max Participants">
                         <input className={inputCls} type="number" min={2} max={10}
                             value={form.maxParticipants} onChange={e => set('maxParticipants', e.target.value)} disabled={loading} />
@@ -244,10 +229,13 @@ const JoinRoomModal = ({ onClose, onJoined }) => {
 
     const handleJoin = async () => {
         const code = inviteLink.trim();
-        if (!code) { setError('Paste an invite code'); return; }
-        setError(''); setLoading(true);
+        if (!code) { 
+            setError('Paste an invite code')
+             return
+        }
+        setError(''); 
+        setLoading(true);
         try {
-            // ✅ FIX 3: navigate using _id returned from joinRoom
             const res = await api.post(`/rooms/join/${code}`);
             onJoined(res.data.data._id);
         } catch (err) {
@@ -307,7 +295,7 @@ return (
                 <button onClick={() => onCopyInvite(room.inviteLink)}
                     title="Copy invite code"
                     className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs transition-colors">
-                    📋
+                    Link
                 </button>
                 
                 {/* ✨ THE NUKE BUTTON (Only visible to the creator) */}
@@ -344,7 +332,7 @@ const Dashboard = () => {
         setTimeout(() => setToast(''), 2500);
     };
 
-    // ✅ FIX 6: Fetch user's rooms
+    // Fetch user's rooms
     const fetchRooms = useCallback(async () => {
         try {
             const res = await api.get('/rooms/my-rooms');
@@ -356,10 +344,12 @@ const Dashboard = () => {
         }
     }, []);
 
-    useEffect(() => { fetchRooms(); }, [fetchRooms]);
+    useEffect(() => { 
+        fetchRooms()
+     }, [fetchRooms]);
 
     const handleLogout = async () => {
-        await logout();
+        await logout()
         navigate('/login');
     };
 
@@ -430,11 +420,11 @@ const Dashboard = () => {
                 <div className="max-w-5xl mx-auto flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-blue-400 tracking-tight">DevSpace</h1>
-                        <p className="text-xs text-gray-500">Welcome back, {user?.name}</p>
+                        <p className="text-xs text-gray-500">⚡Workspace Initialized, {user?.name?.toUpperCase()}</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <span className="hidden sm:block px-3 py-1 bg-gray-800 text-xs rounded-full border border-gray-700 text-gray-400">
-                            {user?.role}
+                            {user?.role.toUpperCase()}
                         </span>
                         <button onClick={handleLogout}
                             className="px-4 py-1.5 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 text-sm rounded-lg font-medium transition-colors">

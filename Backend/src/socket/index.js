@@ -103,13 +103,6 @@ export const initializeSocket = (httpServer) => {
             
         })  
 
-        // Broadcast new room state to the candidate
-        socket.on("notify-new-problem", ({ roomId, updatedRoomData }) => {
-            if (!roomId || !updatedRoomData) return  
-            
-            // Send the fresh room data to everyone EXCEPT the sender
-            socket.to(roomId).emit("room-updated", updatedRoomData)  
-        })  
 
         socket.on("problem-selected", async({roomId,problemId})=>{
             if (!roomId || !problemId) {

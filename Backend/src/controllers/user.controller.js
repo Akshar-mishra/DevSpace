@@ -85,7 +85,7 @@ export const loginUser = asyncHandler( async(req,res)=>{
         .json(
             new ApiResponse(
                 200,
-                { user: loggedInUser, accessToken, refreshToken },
+                { user: loggedInUser, accessToken },
                 "User loggedin successfully"
             )
         )
@@ -114,7 +114,9 @@ export const logoutUser= asyncHandler( async (req,res)=>{
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .json(new ApiResponse(200, {}, "User logged out successfully"))
+    .json(
+        new ApiResponse(200, {}, "User logged out successfully")
+    )
 
 
 })
@@ -125,8 +127,7 @@ export const refreshAccessToken = asyncHandler( async (req,res)=>{
     if (!incomingRefreshToken) {
         throw new ApiErrors(401, "Unauthorized Request")
     }
-
-
+    
     const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
     const user = await User.findById(decodedToken?._id)  
     if (!user) {

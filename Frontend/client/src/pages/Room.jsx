@@ -21,7 +21,7 @@ const LANGUAGES = [
 function shouldShareEditor(room) {
     if (!room) return true
     if (room.type === "interview_room") return true
-    if (room.type === "friendly_room" && room.mode === "collab") return true
+    if (room.type === "friendly_room") return true
     return false
 }
 
@@ -131,16 +131,17 @@ function ChatPanel({ roomId, socket, currentUser }) {
 
 // ── Room Page ─────────────────────────────────────────────────────────────────
 export default function Room() {
-    const { roomId }        = useParams()
-    const navigate          = useNavigate()
-    const { socket }        = useSocket()
-    const { user }          = useContext(AuthContext)
+    const { roomId }= useParams()
+    const navigate  = useNavigate()
+    const { socket }= useSocket()
+    const { user }  = useContext(AuthContext)
 
     const [roomData, setRoomData]           = useState(null)
     const [participants, setParticipants]   = useState([])
     const [language, setLanguage]           = useState("python")
     const [chatOpen, setChatOpen]           = useState(true)
     const [activeProblem, setActiveProblem] = useState(null)
+    
     const [generatorOpen, setGeneratorOpen] = useState(false)
     
     const hasEdited      = useRef({}) // Tracks edits per problem: { [problemId]: { python: true } }
@@ -168,6 +169,8 @@ export default function Room() {
     const [feedbackSessionId, setFeedbackSessionId] = useState(null)
     const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
 
+
+    
     // Load room
     useEffect(() => {
         let cancelled = false
