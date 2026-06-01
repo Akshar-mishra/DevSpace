@@ -101,8 +101,9 @@ export const addProblemToRoom = asyncHandler(async (req, res) => {
         throw new ApiErrors(404, "Room not found")   
     }
 
-    if (!room.createdBy.equals(req.user._id)) {
-        throw new ApiErrors(403, "Only room creator can add problems")   
+    const isParticipant = room.participants.some(p => p.equals(req.user._id))
+    if (!isParticipant) {
+        throw new ApiErrors(403, "Only room participants can add problems")
     }
 
     // 1. Search the DB for an exact match

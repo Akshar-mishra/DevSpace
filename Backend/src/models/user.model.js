@@ -22,7 +22,8 @@ const userSchema= new Schema(
         role:{
             type: String,
             enum: ["interviewer", "member"],
-            default: "member"
+            default: "member",
+            lowercase: true
         },
         refreshToken: {
             type: String
@@ -39,9 +40,7 @@ const userSchema= new Schema(
 //async lga hai to no need of next() 
 userSchema.pre("save", async function () {
     if (!this.isModified("password")) return   
-
     this.password = await bcrypt.hash(this.password, 10)  
-    
 })  
 
 //check password

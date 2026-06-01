@@ -13,7 +13,7 @@ router.route("/my-rooms").get(getMyRooms)
 router.route("/").post(createRoom)  
 router.route("/join/:inviteLink").post(joinRoom)  
 router.route("/:id").get(getRoomById)  
-router.route("/:roomId/add-problem").post(restrictToInterviewer, addProblemToRoom)
+router.route("/:roomId/add-problem").post( addProblemToRoom)
 router.route("/:roomId").delete(deleteRoom)
 router.route("/:roomId/end").put(restrictToInterviewer, endRoomSession)  
 

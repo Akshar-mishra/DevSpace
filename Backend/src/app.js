@@ -2,7 +2,6 @@ import express from 'express'
 import cors from "cors"  
 import cookieParser from "cookie-parser"  
 
-
 const app=express()
 
 app.use(cors({
@@ -18,9 +17,8 @@ app.use(cookieParser())
 import userRouter from "./routes/user.routes.js"
 app.use("/api/v1/users",userRouter)
 
-import room from "./routes/room.routes.js"
-app.use("/api/v1/rooms",room)
-
+import roomRouter from "./routes/room.routes.js"
+app.use("/api/v1/rooms",roomRouter)
 
 import problemRouter from "./routes/problem.routes.js"
 app.use("/api/v1/problems", problemRouter)  
@@ -30,7 +28,6 @@ app.use("/api/v1/codes",codeRouter)
 
 import sessionRouter from "./routes/session.routes.js"
 app.use("/api/v1/sessions",sessionRouter)
-
 
 
 app.use((err, req, res, next) => {

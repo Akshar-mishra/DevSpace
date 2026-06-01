@@ -18,7 +18,27 @@ export const generateProblemPayload = async (problemName) => {
       "difficulty": "String (Easy, Medium, Hard)",
       "constraints": ["String"],
       "examples": [{"input": "String", "output": "String", "explanation": "String"}],
-      "testCases": [{"input": "String (NO BRACKETS. NO COMMAS. If input is an array, format it as the size of the array followed by space-separated elements. e.g. '5\\n1 2 3 4 5')", "expectedOutput": "String (NO BRACKETS. NO COMMAS. Space-separated only.)"}],
+      IMPORTANT:
+testCases MUST be an array of OBJECTS.
+
+CORRECT:
+"testCases": [
+  {
+    "input": "4 8\n3 6 7 11",
+    "expectedOutput": "4"
+  }
+]
+
+WRONG:
+"testCases": [
+  "4 8\n3 6 7 11"
+]
+
+Every test case object MUST contain BOTH:
+- input
+- expectedOutput
+
+Never return testCases as strings.
       "boilerplates": {
         "cpp": "String (Executable C++ template. MUST include #includes, an EMPTY logic function (e.g. return 0/empty vector), and int main() that parses stdin and prints stdout. DO NOT SOLVE THE PROBLEM.)",
         "java": "String (Executable Java template. MUST include imports, an EMPTY logic method (e.g. return null), and public static void main parsing System.in. DO NOT SOLVE THE PROBLEM.)",
