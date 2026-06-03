@@ -54,7 +54,6 @@ export const getMySessions = asyncHandler(async (req, res) => {
     )
 })
 
-
 export const getSessionById = asyncHandler(async (req, res) => {
     const { sessionId } = req.params
     const session = await Session.findById(sessionId)
@@ -83,3 +82,27 @@ export const getSessionById = asyncHandler(async (req, res) => {
         new ApiResponse(200, sessionObj, "Session fetched successfully")
     )
 })
+
+export const deleteSession = asyncHandler(async (req, res) => {
+    const { sessionId } = req.params;
+    const session = await Session.findById(sessionId);
+    
+    if (!session) {
+        throw new ApiErrors(404, "Session not found");
+    }
+
+    const isParticipant = 
+        req.user._id.toString() === session.interviewer.toString() || 
+        req.user._id.toString() === session.candidate.toString();
+
+    if (!isParticipant) {
+        throw new ApiErrors(403, "Not authorized to delete this session");
+    }
+
+    await Session.findByIdAndDelete(sessionId);
+
+    return res.status(200)
+    .json(
+        new ApiResponse(200, null, "Session history deleted successfully")
+    );
+});
