@@ -19,7 +19,7 @@ export const createProblem = asyncHandler( async (req,res)=>{
     if (!problemData || !problemData.boilerplates || !problemData.testCases) {
         throw new ApiErrors(500, "AI Engine returned an incomplete problem structure.")  
     }
-
+ 
     const problem= await Problem.create({...problemData,generatedBy:req.user._id})
     if (!problem) {
         throw new ApiErrors(500, "Failed to save the generated problem to the database")  

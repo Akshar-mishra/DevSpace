@@ -62,7 +62,7 @@ const problemSchema = new Schema(
             python: { 
                 type: String, 
                 required: true 
-            }
+            } 
         },
         generatedBy: {
             type: Schema.Types.ObjectId,

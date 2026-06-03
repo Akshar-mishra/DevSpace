@@ -32,7 +32,7 @@ const roomSchema = new Schema(
             type: String,
             unique: true,
             required: true
-        },
+        }, 
         isPublic: {
             type: Boolean,
             default: false

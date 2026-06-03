@@ -8,4 +8,4 @@ const router = Router()
 router.use(verifyJWT)
 router.route("/generate").post(restrictToInterviewer, createProblem)
 
-export default router
+export default router 

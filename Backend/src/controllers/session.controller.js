@@ -6,7 +6,6 @@ import { Room } from "../models/room.model.js"
 import { User } from "../models/user.model.js"
 
 export const submitFeedback= asyncHandler(async (req, res) => {
-
     const {sessionId} = req.params
     const{communication,problemSolving ,codeQuality, overall,comments}= req.body
     if(!communication || !comments || !problemSolving || !overall || !codeQuality){

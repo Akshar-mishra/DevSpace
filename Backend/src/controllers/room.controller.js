@@ -10,7 +10,6 @@ import { roomCodeState } from "../socket/index.js"
 
 export const createRoom = asyncHandler(async (req, res) => {
     const { name, type, mode, isPublic, maxParticipants } = req.body
-
     if (!name || !type) {
         throw new ApiErrors(400, "Room name and type are required")  
     }
@@ -29,15 +28,15 @@ export const createRoom = asyncHandler(async (req, res) => {
 
     if (!room) throw new ApiErrors(500, "Failed to create room")  
 
-    res.status(201)
+    return res.status(201)
     .json(
         new ApiResponse(201, room, "Room created successfully")
     )  
 })  
 
+
 export const joinRoom = asyncHandler(async (req, res) => {
     const { inviteLink } = req.params  
-
     if (!inviteLink){
         throw new ApiErrors(400, "Invite link is required")  
     }
@@ -69,14 +68,17 @@ export const joinRoom = asyncHandler(async (req, res) => {
 
 export const getRoomById = asyncHandler(async (req, res) => {
     const { id } = req.params  
-
     const room = await Room.findById(id)
         .populate("participants", "name email role isOnline")
         .populate("problems")  
     
     if (!room) throw new ApiErrors(404, "Room not found or has been deleted")  
 
-    return res.status(200).json(new ApiResponse(200, room, "Room data fetched successfully"))  
+    return res.status(200)
+    .json(
+        new ApiResponse(200, room, "Room data fetched successfully"
+
+    ))  
 })  
 
 export const getMyRooms = asyncHandler(async (req, res) => {
@@ -84,80 +86,89 @@ export const getMyRooms = asyncHandler(async (req, res) => {
         .populate("createdBy", "name email")
         .sort({ updatedAt: -1 })  
 
-    return res.status(200).json(new ApiResponse(200, rooms, "Rooms fetched successfully"))  
+    return res.status(200)
+    .json(
+        new ApiResponse(200, rooms, "Rooms fetched successfully")
+    )  
 })  
 
 
 export const addProblemToRoom = asyncHandler(async (req, res) => {
-    const { roomId } = req.params   
-    const { problemName } = req.body   
+    const { roomId } = req.params;   
+    const { problemName } = req.body;   
     
     if (!problemName || problemName.trim() === "") {
-        throw new ApiErrors(400, "Problem name is required")   
+        throw new ApiErrors(400, "Problem name is required");   
     }
 
-    const room = await Room.findById(roomId)   
+    const room = await Room.findById(roomId);   
     if (!room) {
-        throw new ApiErrors(404, "Room not found")   
+        throw new ApiErrors(404, "Room not found");   
     }
 
-    const isParticipant = room.participants.some(p => p.equals(req.user._id))
+    const isParticipant = room.participants.some(p => p.equals(req.user._id));
     if (!isParticipant) {
-        throw new ApiErrors(403, "Only room participants can add problems")
+        throw new ApiErrors(403, "Only room participants can add problems");
     }
 
-    // 1. Search the DB for an exact match
+    // Escape special characters so users can't crash your DB with regex symbols
+    const safeSearchTerm = problemName.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    
+    // Search anywhere in the title, case-insensitive (removed ^ and $)
     let problem = await Problem.findOne({ 
-        title: { $regex: new RegExp(`^${problemName.trim()}$`, "i") } 
-    })   
+        title: { $regex: new RegExp(safeSearchTerm, "i") } 
+    });   
 
     // 2. Generate if not found
     if (!problem) {
-        console.log(`[AI Triggered] Generating new problem: "${problemName}"...`)   
-        const problemData = await generateProblemPayload(problemName)   
+        console.log(`[AI Triggered] Generating new problem: "${problemName}"...`);   
+        const problemData = await generateProblemPayload(problemName);   
         
         if (!problemData || !problemData.boilerplates) {
-            throw new ApiErrors(500, "Failed to generate problem via AI")   
+            throw new ApiErrors(500, "Failed to generate problem via AI");   
         }
-
-        // 🚨 THE FIX: Catch Mongoose specifically and log the exact schema violation
         try {
-            // Log the raw AI data so you can see exactly what Gemini returned
-            console.log("\n[AI Success] Raw Data received:", JSON.stringify(problemData, null, 2)) 
-
+            console.log("\n[AI Success] Raw Data received:", JSON.stringify(problemData, null, 2))
             problem = await Problem.create({
                 ...problemData, 
                 generatedBy: req.user._id,
-                createdBy: req.user._id // Adding this as Mongoose likely requires it!
-            }) 
-            console.log("[DB Success] Problem saved to database!") 
-
+                createdBy: req.user._id
+            })
+            console.log("[DB Success] Problem saved to database!")
         } catch (dbError) {
-            console.error("\n❌ MONGOOSE VALIDATION ERROR ❌") 
-            console.error(dbError.message)  // This will tell you exactly which field failed!
-            throw new ApiErrors(500, `Database Validation Failed: ${dbError.message}`) 
+            console.error("\n❌ MONGOOSE VALIDATION ERROR ❌"); 
+            console.error(dbError.message);  
+            throw new ApiErrors(500, `Database Validation Failed: ${dbError.message}`); 
         }
-        
-    } else {
-        console.log(`[Cache Hit] Problem "${problemName}" loaded instantly from DB!`)   
+    } 
+    else {
+        console.log(`[Cache Hit] Problem "${problem.title}" loaded instantly from DB!`);   
     }
 
     // 3. Add to the room
     if (!room.problems) {
-        room.problems = []   
+        room.problems = [];   
     }
 
-    if (!room.problems.includes(problem._id)) {
-        room.problems.push(problem._id)   
-        await room.save({ validateBeforeSave: false })   
+    // You MUST convert ObjectIds to strings to compare them reliably
+    const problemExistsInRoom = room.problems.some(
+        (id) => id.toString() === problem._id.toString()
+    );
+
+    if (!problemExistsInRoom) {
+        room.problems.push(problem._id);   
+        await room.save({ validateBeforeSave: false });   
     }
 
-    const updatedRoom = await Room.findById(roomId).populate("problems")   
+    const updatedRoom = await Room.findById(roomId).populate("problems");   
     
-    return res.status(201).json(
+    return res.status(201)
+    .json(
         new ApiResponse(201, updatedRoom, "Problem added to room successfully")
-    )   
-}) 
+    );   
+});
+
+
 export const deleteRoom = asyncHandler(async (req, res) => {
     const {roomId} = req.params
     const room = await Room.findById(roomId)
@@ -186,15 +197,27 @@ export const endRoomSession = asyncHandler(async (req, res) => {
     const room = await Room.findById(roomId)  
     if (!room) throw new ApiErrors(404, "Room not found")  
     
-    // ... (Your existing participant finding logic) ...
     const candidateId = room.participants.find(pId => pId.toString() !== req.user._id.toString())  
 
-    // 🚨 THIS IS THE FIX: Capture the return value of Session.create
+    // Transform the frontend cache into the schema array format
+    let snapshots = [];
+    if (finalCache && typeof finalCache === 'object') {
+        for (const [probId, languages] of Object.entries(finalCache)) {
+            for (const [lang, codeStr] of Object.entries(languages)) {
+                snapshots.push({
+                    problem: probId,
+                    language: lang,
+                    code: codeStr
+                });
+            }
+        }
+    }
+
     const session = await Session.create({
         room: roomId,
         interviewer: req.user._id,
         candidate: candidateId,
-        codeSnapshots: [], // Add your snapshot logic here
+        codeSnapshots: snapshots, // Safely inject the formatted snapshots here
         interviewerNotes: interviewerNotes,
         endedAt: Date.now()
     })  
@@ -203,8 +226,7 @@ export const endRoomSession = asyncHandler(async (req, res) => {
     room.endedAt = Date.now()  
     await room.save({ validateBeforeSave: false })  
 
-    // NOW 'session' is defined, and this will work:
     return res.status(200).json(
         new ApiResponse(200, { room, sessionId: session._id }, "Session ended securely")
     )  
-})  
+})

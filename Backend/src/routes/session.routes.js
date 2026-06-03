@@ -12,3 +12,4 @@ router.route("/:sessionId").get(getSessionById)
 router.route("/:sessionId/feedback").put(restrictToInterviewer, submitFeedback)
 
 export default router
+ 

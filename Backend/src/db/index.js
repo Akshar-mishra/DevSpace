@@ -9,6 +9,6 @@ const connectDB = async () => {
         console.log("Error in Databse Setup ",err)  
         process.exit(1)
     }
-}
+} 
 
 export default connectDB

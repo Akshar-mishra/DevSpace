@@ -28,7 +28,7 @@ CORRECT:
     "expectedOutput": "4"
   }
 ]
-
+ 
 WRONG:
 "testCases": [
   "4 8\n3 6 7 11"
