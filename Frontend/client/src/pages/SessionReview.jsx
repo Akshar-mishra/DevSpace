@@ -8,6 +8,9 @@ export default function SessionReview() {
     const navigate = useNavigate();
     const [session, setSession] = useState(null);
     const [loading, setLoading] = useState(true);
+    
+    // --- FIX: Add state to track which snapshot we are viewing ---
+    const [activeSnapshotIdx, setActiveSnapshotIdx] = useState(0);
 
     useEffect(() => {
         const fetchSession = async () => {
@@ -25,19 +28,19 @@ export default function SessionReview() {
     }, [sessionId, navigate]);
 
     if (loading) {
-    return (
-        <div className="min-h-screen bg-gray-950 p-6 animate-pulse">
-            <div className="w-32 h-6 bg-gray-800 rounded mb-6"></div> {/* Back button placeholder */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 h-[500px] bg-gray-900 rounded-xl"></div>
-                <div className="space-y-4">
-                    <div className="h-40 bg-gray-900 rounded-xl"></div>
-                    <div className="h-40 bg-gray-900 rounded-xl"></div>
+        return (
+            <div className="min-h-screen bg-gray-950 p-6 animate-pulse">
+                <div className="w-32 h-6 bg-gray-800 rounded mb-6"></div> 
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 h-[500px] bg-gray-900 rounded-xl"></div>
+                    <div className="space-y-4">
+                        <div className="h-40 bg-gray-900 rounded-xl"></div>
+                        <div className="h-40 bg-gray-900 rounded-xl"></div>
+                    </div>
                 </div>
             </div>
-        </div>
-    );
-}
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-950 p-6 text-gray-200">
@@ -47,13 +50,35 @@ export default function SessionReview() {
                 {/* Main Content: Editor */}
                 <div className="lg:col-span-2 space-y-4">
                     <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
-                        <h2 className="text-lg font-bold text-white mb-2">{session.room?.name}</h2>
+                        
+                        {/* --- FIX: Added Header & Dropdown UI --- */}
+                        <div className="flex justify-between items-center mb-3">
+                            <h2 className="text-lg font-bold text-white">{session.room?.name}</h2>
+                            
+                            {session.codeSnapshots && session.codeSnapshots.length > 0 && (
+                                <select 
+                                    className="bg-gray-800 text-sm font-semibold text-gray-200 px-3 py-1.5 rounded border border-gray-700 outline-none focus:border-purple-500"
+                                    value={activeSnapshotIdx}
+                                    onChange={(e) => setActiveSnapshotIdx(Number(e.target.value))}
+                                >
+                                    {session.codeSnapshots.map((snap, idx) => (
+                                        <option key={idx} value={idx}>
+                                            File {idx + 1} ({snap.language})
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
+                        {/* --- END FIX --- */}
+
                         <div className="h-[500px] border border-gray-700 rounded-lg overflow-hidden">
                             <Editor
                                 height="100%"
                                 theme="vs-dark"
                                 readOnly={true}
-                                value={session.codeSnapshots?.[0]?.code || "// No code captured"}
+                                // --- FIX: Use activeSnapshotIdx and pass the correct language ---
+                                language={session.codeSnapshots?.[activeSnapshotIdx]?.language || "javascript"}
+                                value={session.codeSnapshots?.[activeSnapshotIdx]?.code || "// No code captured"}
                                 options={{ readOnly: true }}
                             />
                         </div>
@@ -66,7 +91,6 @@ export default function SessionReview() {
                         <h3 className="text-lg font-bold text-white mb-4">Feedback</h3>
                         {session.feedback ? (
                             <div className="space-y-3">
-                                {/* Render only the number-based ratings */}
                                 {['communication', 'problemSolving', 'codeQuality', 'overall'].map((key) => (
                                     <div key={key} className="flex justify-between">
                                         <span className="capitalize text-gray-400">{key.replace(/([A-Z])/g, ' $1')}</span>
@@ -74,7 +98,6 @@ export default function SessionReview() {
                                     </div>
                                 ))}
                                 
-                                {/* Render the comments separately */}
                                 <div className="pt-4 border-t border-gray-800 mt-2">
                                     <span className="text-gray-400 text-sm">Comments</span>
                                     <p className="font-semibold text-white mt-1">{session.feedback.comments}</p>
@@ -83,7 +106,6 @@ export default function SessionReview() {
                         ) : <p className="text-sm text-gray-600">No feedback yet.</p>}
                     </div>
 
-                    {/* Private Notes (Only visible to Interviewer) */}
                     {session.interviewerNotes && (
                         <div className="bg-purple-900/10 p-6 rounded-xl border border-purple-500/20">
                             <h3 className="text-lg font-bold text-purple-400 mb-2">Interviewer Notes</h3>
