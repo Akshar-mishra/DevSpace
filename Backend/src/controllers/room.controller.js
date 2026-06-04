@@ -69,7 +69,7 @@ export const joinRoom = asyncHandler(async (req, res) => {
 export const getRoomById = asyncHandler(async (req, res) => {
     const { id } = req.params  
     const room = await Room.findById(id)
-        .populate("participants", "name email role isOnline")
+        .populate("participants", "name email role")
         .populate("problems")  
     
     if (!room) throw new ApiErrors(404, "Room not found or has been deleted")  
@@ -119,7 +119,6 @@ export const addProblemToRoom = asyncHandler(async (req, res) => {
         title: { $regex: new RegExp(safeSearchTerm, "i") } 
     });   
 
-    // 2. Generate if not found
     if (!problem) {
         console.log(`[AI Triggered] Generating new problem: "${problemName}"...`);   
         const problemData = await generateProblemPayload(problemName);   
