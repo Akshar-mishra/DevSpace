@@ -1,72 +1,64 @@
-import { useState, useContext, useEffect } from 'react'  
-import { useNavigate, Link } from 'react-router-dom'  
-import api from '../services/api'  
-import { AuthContext } from '../context/AuthContext'  
-import Log from '../img/Log.webp'
+import { useState, useContext, useEffect } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import api from '../services/api'
+import { AuthContext } from '../context/AuthContext'
 
 const Login = () => {
-    const navigate = useNavigate()  
-    const { setUser, user, loading } = useContext(AuthContext)  
-    const [formData, setFormData] = useState({ email: '', password: '' })  
-    const [error, setError] = useState('')  
-    const [formLoading, setFormLoading] = useState(false)  
+    const navigate = useNavigate()
+    const { setUser, user, loading } = useContext(AuthContext)
+    const [formData, setFormData] = useState({ email: '', password: '' })
+    const [error, setError] = useState('')
+    const [formLoading, setFormLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
 
-    //Redirect if already logged in
+    // Redirect if already logged in
     useEffect(() => {
         if (user && !loading) {
-            navigate('/dashboard', { replace: true })  
+            navigate('/dashboard', { replace: true })
         }
-    }, [user, loading, navigate])  
+    }, [user, loading, navigate])
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value })  
-    }  
+        setFormData({ ...formData, [e.target.name]: e.target.value })
+    }
 
     const handleSubmit = async (e) => {
-        e.preventDefault()  
-        setError('')  
-        setFormLoading(true)  
+        e.preventDefault()
+        setError('')
+        setFormLoading(true)
         try {
-            const response = await api.post('/users/login', formData)  
+            const response = await api.post('/users/login', formData)
             // Update global auth state
-            setUser(response.data.data.user)  
+            setUser(response.data.data.user)
             // Redirect to dashboard
-            navigate('/dashboard')  
+            navigate('/dashboard')
         } catch (err) {
-            setError(err.response?.data?.message || 'Invalid access credentials.')  
+            setError(err.response?.data?.message || 'Invalid access credentials.')
         } finally {
-            setFormLoading(false)  
+            setFormLoading(false)
         }
-    }  
-
-    
+    }
 
     return (
         <div 
-            className="flex h-screen items-center justify-center bg-zinc-950 text-white p-4"
-            style={{ 
-                backgroundImage: `url(${Log})`,
-                backgroundSize: "cover", 
-                backgroundPosition: "center" 
-            }}
+            className="flex h-screen items-center justify-center bg-[#1e2532] bg-[radial-gradient(ellipse_80%_80%_at_50%_-10%,rgba(74,222,128,0.35),rgba(30,37,50,1)_80%)] p-4"
         >
-           <div className="w-full max-w-sm bg-black/30 p-8 rounded-2xl shadow-2xl border border-white/10 backdrop-blur-lg overflow-y-auto max-h-[90vh] custom-scrollbar">
-                <h2 className="text-3xl font-extrabold text-center text-zinc-100 mb-8 tracking-tight">Login to DevSpace</h2>
+           <div className="w-full max-w-sm bg-white/[0.15] p-8 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)] border border-white/[0.3] backdrop-blur-[40px] overflow-y-auto max-h-[90vh] custom-scrollbar">
+                <h2 className="text-2xl font-bold text-center text-slate-50 mb-8 tracking-wide">Login to DevSpace</h2>
 
                 {error && (
-                    <div className="bg-red-950/50 border border-red-500/50 text-red-300 p-3 rounded-lg mb-6 text-center text-sm font-medium backdrop-blur-sm">
+                    <div className="bg-red-500/20 border border-red-400/50 text-red-100 p-3 rounded-xl mb-6 text-center text-sm font-medium backdrop-blur-md shadow-sm">
                         {error}
                     </div>
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
-                        <label htmlFor="email" className="block text-sm font-semibold text-zinc-300">Email</label>
+                        <label htmlFor="email" className="block text-sm font-medium text-slate-100 ml-1">Email</label>
                         <input 
                             type="email" name="email" id="email"
                             value={formData.email} required onChange={handleChange} disabled={formLoading}
-                            className="w-full p-3.5 bg-zinc-900/80 rounded-xl border border-zinc-700/50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-600 transition text-zinc-50 placeholder:text-zinc-600"
+                            className="w-full p-3.5 bg-white/[0.08] rounded-xl border border-white/[0.2] focus:outline-none focus:ring-2 focus:ring-green-400/80 focus:border-green-400/80 transition-all duration-300 text-slate-50 placeholder:text-slate-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]"
                             placeholder="Enter your email" 
                         />
                     </div>
@@ -77,37 +69,37 @@ const Login = () => {
                                 type={showPassword ? "text" : "password"}
                                 name="password" id="password"
                                 value={formData.password} required onChange={handleChange} disabled={formLoading}
-                                className="w-full p-3.5 pr-12 bg-zinc-900/80 rounded-xl border border-zinc-700/50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-600 transition text-zinc-50 placeholder:text-zinc-600"
+                                className="w-full p-3.5 pr-14 bg-white/[0.08] rounded-xl border border-white/[0.2] focus:outline-none focus:ring-2 focus:ring-green-400/80 focus:border-green-400/80 transition-all duration-300 text-slate-50 placeholder:text-slate-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]"
                                 placeholder="Enter your password"
                             />
                             <button 
                                 type="button" onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200 transition p-1 text-xs font-bold"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-white transition-colors p-1 text-xs font-bold tracking-wider"
                             >
                                 {showPassword ? 'HIDE' : 'SHOW'}
                             </button>
                         </div>
                         <div className="flex justify-between items-center text-xs font-medium px-1.5 pt-1">
-                            <label htmlFor="password" className="text-zinc-400">Password</label>
-                            <button type="button" className="text-zinc-400 hover:text-zinc-200 transition">Forgot ?</button>
+                            <label htmlFor="password" className="text-slate-200">Password</label>
+                            <button type="button" className="text-slate-200 hover:text-white transition-colors">Forgot ?</button>
                         </div>
                     </div>
 
                     <button 
                         type="submit" disabled={formLoading} 
-                        className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-800/50 disabled:opacity-70 p-3.5 rounded-xl text-base font-bold text-white tracking-wide transition-all disabled:cursor-not-allowed shadow-md"
+                        className="w-full bg-green-500 hover:bg-green-400 active:scale-[0.98] disabled:bg-slate-600 disabled:opacity-60 p-3.5 rounded-xl text-base font-bold text-white tracking-wide transition-all duration-200 disabled:cursor-not-allowed shadow-[0_4px_20px_rgba(34,197,94,0.4)] mt-2 border border-green-300/50"
                     >
                         {formLoading ? 'Authenticating...' : 'Dock In'}
                     </button>
                 </form>
                 
-                <p className="mt-8 text-center text-sm text-zinc-400 font-medium">
+                <p className="mt-8 text-center text-sm text-slate-200 font-medium">
                     Don't Have An Account? 
-                    <Link to="/register" className="ml-1.5 text-zinc-50 hover:text-white transition font-bold">Register</Link>
+                    <Link to="/register" className="ml-1.5 text-green-300 hover:text-green-200 transition-colors font-bold tracking-wide shadow-green-500">Register</Link>
                 </p>
             </div>
         </div>
-    ) 
+    )
 }
 
-export default Login 
+export default Login

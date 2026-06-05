@@ -364,7 +364,7 @@ const Dashboard = () => {
     }, []);
 
     return (
-        <div className="min-h-screen text-[#c9d1d9] bg-[#0d1117] font-sans">
+        <div className="min-h-screen text-[#c9d1d9] bg-[#23272d] font-sans">
             
             {/* ── Toast ── */}
             {toast && (
@@ -378,11 +378,11 @@ const Dashboard = () => {
             {modal === 'join'   && <JoinRoomModal   onClose={() => setModal(null)} onJoined={handleJoined} />}
 
             {/* ── Header ── */}
-            <header className="sticky top-0 z-40 border-b border-[#30363d] bg-[#161b22] px-6 md:px-10 py-4">
+            <header className="sticky top-0 z-40 border-b border-[#000000] bg-[#2e353d] px-6 md:px-10 py-4">
     <div className="w-full flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#0d1117] border border-[#30363d] flex items-center justify-center">
-                            <svg className="w-5 h-5 text-[#c9d1d9]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+                        <div className="w-8 h-8 rounded-full bg-[#000000] border border-[#30363d] flex items-center justify-center">
+                            <svg className="w-5 h-5 text-[#f8f9fb]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
                         </div>
                         <h1 className="text-xl font-semibold text-white tracking-tight">DevSpace</h1>
                     </div>
@@ -391,16 +391,16 @@ const Dashboard = () => {
                             <span className="text-sm font-semibold text-white">{user?.name}</span>
                             <span className="text-[10px] text-[#8b949e]">{user?.role === 'interviewer' ? 'Interviewer' : 'Candidate'}</span>
                         </div>
-                        <div className="h-6 w-px bg-[#30363d] hidden sm:block" />
+                        <div className="h-6 w-px bg-[#000000] hidden sm:block" />
                         <button onClick={handleLogout} className="text-sm font-medium transition-colors text-[#ffffff] hover:text-[#d40b0b]  hover:border-[#f85149]/30 border rounded-md px-3 py-1">
-                            Sign out
+                            Logout
                         </button>
                     </div>
                 </div>
             </header>
 
             {/* ── Body ── */}
-            <main className="w-screen mx-auto w-full px-6 md:px-10 py-8 lg:py-10">
+            <main className="w-full min-h-screen overflow-x-hidden no-scrollbar mx-auto w-full px-6 md:px-10 py-8 lg:py-10">
 
                 {/* ── Hero Banner ── */}
                 <div className="w-full rounded-xl p-8 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-[#30363d] bg-[#000204]">
