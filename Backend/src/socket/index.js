@@ -36,9 +36,9 @@ export const initializeSocket = (httpServer) => {
         }
     })
 
-    // Connection  //socket=client 
+    // Connection
     io.on("connection", (socket) => {
-        // Room join/leave  (socket io's room)
+        // socket io's room
         socket.on("join-room", async (roomId) => {
             socket.join(roomId)
             const socketsInRoom = await io.in(roomId).fetchSockets()
@@ -141,7 +141,7 @@ export const initializeSocket = (httpServer) => {
             }
         })
 
-        // 🚨 Anti-Cheat: Relay tab switch warnings
+        //  Anti-Cheat
         socket.on("tab-switched", ({ roomId, candidateName }) => {
             if (!roomId) return
 

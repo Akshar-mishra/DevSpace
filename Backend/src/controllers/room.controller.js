@@ -13,6 +13,9 @@ export const createRoom = asyncHandler(async (req, res) => {
     if (!name || !type) {
         throw new ApiErrors(400, "Room name and type are required")  
     }
+    if (type === 'interview_room' && req.user.role !== 'interviewer') {
+        throw new ApiErrors(403, "Only interviewers can create interview rooms")
+    }
 
     const inviteLink = crypto.randomBytes(4).toString("hex")  
 
@@ -94,37 +97,37 @@ export const getMyRooms = asyncHandler(async (req, res) => {
 
 
 export const addProblemToRoom = asyncHandler(async (req, res) => {
-    const { roomId } = req.params;   
-    const { problemName } = req.body;   
+    const { roomId } = req.params     
+    const { problemName } = req.body     
     
     if (!problemName || problemName.trim() === "") {
-        throw new ApiErrors(400, "Problem name is required");   
+        throw new ApiErrors(400, "Problem name is required")     
     }
 
-    const room = await Room.findById(roomId);   
+    const room = await Room.findById(roomId)     
     if (!room) {
-        throw new ApiErrors(404, "Room not found");   
+        throw new ApiErrors(404, "Room not found")     
     }
 
-    const isParticipant = room.participants.some(p => p.equals(req.user._id));
+    const isParticipant = room.participants.some(p => p.equals(req.user._id))  
     if (!isParticipant) {
-        throw new ApiErrors(403, "Only room participants can add problems");
+        throw new ApiErrors(403, "Only room participants can add problems")  
     }
 
     // Escape special characters so users can't crash your DB with regex symbols
-    const safeSearchTerm = problemName.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const safeSearchTerm = problemName.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')  
     
     // Search anywhere in the title, case-insensitive (removed ^ and $)
     let problem = await Problem.findOne({ 
         title: { $regex: new RegExp(safeSearchTerm, "i") } 
-    });   
+    })     
 
     if (!problem) {
-        console.log(`[AI Triggered] Generating new problem: "${problemName}"...`);   
-        const problemData = await generateProblemPayload(problemName);   
+        console.log(`[AI Triggered] Generating new problem: "${problemName}"...`)     
+        const problemData = await generateProblemPayload(problemName)     
         
         if (!problemData || !problemData.boilerplates) {
-            throw new ApiErrors(500, "Failed to generate problem via AI");   
+            throw new ApiErrors(500, "Failed to generate problem via AI")     
         }
         try {
             console.log("\n[AI Success] Raw Data received:", JSON.stringify(problemData, null, 2))
@@ -135,37 +138,35 @@ export const addProblemToRoom = asyncHandler(async (req, res) => {
             })
             console.log("[DB Success] Problem saved to database!")
         } catch (dbError) {
-            console.error("\n❌ MONGOOSE VALIDATION ERROR ❌"); 
-            console.error(dbError.message);  
-            throw new ApiErrors(500, `Database Validation Failed: ${dbError.message}`); 
+            console.error("\n❌ MONGOOSE VALIDATION ERROR ❌")   
+            console.error(dbError.message)    
+            throw new ApiErrors(500, `Database Validation Failed: ${dbError.message}`)   
         }
     } 
     else {
-        console.log(`[Cache Hit] Problem "${problem.title}" loaded instantly from DB!`);   
+        console.log(`[Cache Hit] Problem "${problem.title}" loaded instantly from DB!`)     
     }
 
-    // 3. Add to the room
     if (!room.problems) {
-        room.problems = [];   
+        room.problems = []     
     }
 
-    // You MUST convert ObjectIds to strings to compare them reliably
     const problemExistsInRoom = room.problems.some(
         (id) => id.toString() === problem._id.toString()
-    );
+    )  
 
     if (!problemExistsInRoom) {
-        room.problems.push(problem._id);   
-        await room.save({ validateBeforeSave: false });   
+        room.problems.push(problem._id)     
+        await room.save({ validateBeforeSave: false })     
     }
 
-    const updatedRoom = await Room.findById(roomId).populate("problems");   
+    const updatedRoom = await Room.findById(roomId).populate("problems")     
     
     return res.status(201)
     .json(
         new ApiResponse(201, updatedRoom, "Problem added to room successfully")
-    );   
-});
+    )     
+})  
 
 
 export const deleteRoom = asyncHandler(async (req, res) => {
@@ -199,7 +200,7 @@ export const endRoomSession = asyncHandler(async (req, res) => {
     const candidateId = room.participants.find(pId => pId.toString() !== req.user._id.toString())  
 
     // Transform the frontend cache into the schema array format
-    let snapshots = [];
+    let snapshots = []  
     if (finalCache && typeof finalCache === 'object') {
         for (const [probId, languages] of Object.entries(finalCache)) {
             for (const [lang, codeStr] of Object.entries(languages)) {
@@ -207,7 +208,7 @@ export const endRoomSession = asyncHandler(async (req, res) => {
                     problem: probId,
                     language: lang,
                     code: codeStr
-                });
+                })  
             }
         }
     }
@@ -216,7 +217,7 @@ export const endRoomSession = asyncHandler(async (req, res) => {
         room: roomId,
         interviewer: req.user._id,
         candidate: candidateId,
-        codeSnapshots: snapshots, // Safely inject the formatted snapshots here
+        codeSnapshots: snapshots, 
         interviewerNotes: interviewerNotes,
         endedAt: Date.now()
     })  
@@ -225,7 +226,8 @@ export const endRoomSession = asyncHandler(async (req, res) => {
     room.endedAt = Date.now()  
     await room.save({ validateBeforeSave: false })  
 
-    return res.status(200).json(
+    return res.status(200)
+    .json(
         new ApiResponse(200, { room, sessionId: session._id }, "Session ended securely")
     )  
 })
