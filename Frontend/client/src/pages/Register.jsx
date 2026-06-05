@@ -66,7 +66,7 @@ const Register = () => {
                             placeholder="John Doe"
                         />
                     </div>
-
+ 
                     <div className="space-y-2">
                         <label htmlFor="email" className="block text-sm font-medium text-slate-100 ml-1">Email</label>
                         <input 
