@@ -8,8 +8,6 @@ export default function SessionReview() {
     const navigate = useNavigate();
     const [session, setSession] = useState(null);
     const [loading, setLoading] = useState(true);
-    
-    // --- FIX: Add state to track which snapshot we are viewing ---
     const [activeSnapshotIdx, setActiveSnapshotIdx] = useState(0);
 
     useEffect(() => {

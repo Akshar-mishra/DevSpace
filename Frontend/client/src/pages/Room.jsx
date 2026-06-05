@@ -4,8 +4,6 @@ import Editor from "@monaco-editor/react"
 import { useSocket } from "../context/SocketContext"
 import { AuthContext } from "../context/AuthContext"
 import api from "../services/api"
-import { runCodeService } from "../services/code.service.js"
-import { generateProblem } from "../services/problem.service.js"
 import ProblemGeneratorModal from "../components/ProblemGeneratorModal";
 import FeedbackModal from "../components/FeedbackModal.jsx"
 import { submitSessionFeedback } from "../services/session.service.js";
@@ -29,7 +27,7 @@ function formatTime(date) {
     return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 }
 
-// ── Avatar helpers ────────────────────────────────────────────────────────────
+// Avatar helpers 
 const AVATAR_COLORS = [
     "#6366f1", "#8b5cf6", "#ec4899", "#14b8a6", "#f59e0b", "#3b82f6"
 ]
@@ -60,20 +58,13 @@ function AvatarStack({ participants }) {
     )
 }
 
-// ── Chat Panel ────────────────────────────────────────────────────────────────
-function ChatPanel({ roomId, socket, currentUser }) {
-    const [messages, setMessages] = useState([])
+
+
+// Chat Panel 
+function ChatPanel({ roomId, socket, currentUser ,messages}) {
     const [input, setInput] = useState("")
     const [loading, setLoading] = useState(false)
     const bottomRef = useRef(null)
-
-    useEffect(() => {
-        if (!socket) return
-        socket.on("receive-message", (msg)=>{
-             setMessages(prev => [...prev, msg])
-        })
-        return () => socket.off("receive-message")
-    }, [socket])
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -154,19 +145,23 @@ function ChatPanel({ roomId, socket, currentUser }) {
     )
 }
 
-// ── Room Page ─────────────────────────────────────────────────────────────────
+
+
+//Room Page
 export default function Room() {
     const { roomId } = useParams()
     const navigate = useNavigate()
     const { socket } = useSocket()
     const { user } = useContext(AuthContext)
 
+    
+    const [messages, setMessages] = useState([])
+
     const [roomData, setRoomData] = useState(null)
     const [participants, setParticipants] = useState([])
     const [language, setLanguage] = useState("python")
 
-    const [activeSidebarTab, setActiveSidebarTab] = useState("problem") // problem, chat, notes
-    const [terminalOpen, setTerminalOpen] = useState(false)
+    const [activeSidebarTab, setActiveSidebarTab] = useState("problem") 
     const [activeProblem, setActiveProblem] = useState(null)
     const [generatorOpen, setGeneratorOpen] = useState(false)
 
@@ -194,6 +189,8 @@ export default function Room() {
     const [feedbackSessionId, setFeedbackSessionId] = useState(null)
     const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
 
+    const [isConnected, setIsConnected] = useState(true)
+
     // Load room
     useEffect(() => {
         let cancelled = false
@@ -204,7 +201,8 @@ export default function Room() {
                     setRoomData(res.data.data)
                     setParticipants(res.data.data.participants ?? [])
                 }
-            } catch {
+            } 
+            catch {
                 if (!cancelled) navigate("/dashboard")
             }
         }
@@ -212,9 +210,17 @@ export default function Room() {
         return () => { cancelled = true }
     }, [roomId, navigate])
 
-    // 1. MASTER SOCKET LISTENER
+    //MASTER SOCKET LISTENER
     useEffect(() => {
         if (!socket) return
+        socket.on("disconnect", () => setIsConnected(false))
+
+        socket.on("connect", () => {
+            setIsConnected(true)
+            socket.emit("join-room", roomId) 
+        })
+        socket.on("connect_error", () => setIsConnected(false))
+
         socket.on("room-state", (state) => {
             if (state?.codes) {
                 localCodeCache.current = state.codes
@@ -279,24 +285,26 @@ export default function Room() {
 
         socket.on("room-updated", (updatedRoomData) => {
             setRoomData(updatedRoomData)
-            if (!activeProblemRef.current && updatedRoomData.problems?.length > 0) {
-                const first = updatedRoomData.problems[0]
-                setActiveProblem(first)
-                setSelectedProblem(first)
-            }
+            const newProblem = updatedRoomData.problems[updatedRoomData.problems.length - 1]
+            setActiveProblem(newProblem)       
+            setSelectedProblem(newProblem)  
         })
 
         socket.on("interview-ended", () => {
             setRoomData(prev => ({ ...prev, status: "ended" }));
+            setMessages([]);
             alert("The session has concluded. The workspace is now locked.");
         })
 
         socket.on("cheat-warning", ({ message }) => {
-            if (user?.role === "interviewer") {
+            if (user?.role === "interviewer" && roomData?.type === "interview_room") {
                 alert(message);
             }
         })
         return () => {
+            socket.off("disconnect")
+            socket.off("connect")
+            socket.off("connect_error")
             socket.off("room-state")
             socket.off("code-update")
             socket.off("language-update")
@@ -308,16 +316,16 @@ export default function Room() {
 
     // SWAPPER when language and problem check local first then change
     useEffect(() => {
-        if (!activeProblem || !editorRef.current) return;
+        if (!activeProblem || !editorRef.current) return
+        const pId = String(activeProblem._id)
+        const savedCode = localCodeCache.current[pId]?.[language]
 
-        const pId = String(activeProblem._id);
-        const savedCode = localCodeCache.current[pId]?.[language];
-
-        isRemoteUpdate.current = true;
+        isRemoteUpdate.current = true
 
         if (savedCode !== undefined) {
             editorRef.current.setValue(savedCode);
-        } else {
+        } 
+        else {
             const boilerplate = activeProblem.boilerplates?.[language] || DEFAULT_BOILERPLATE;
             editorRef.current.setValue(boilerplate);
             if (!localCodeCache.current[pId]) localCodeCache.current[pId] = {};
@@ -335,6 +343,7 @@ export default function Room() {
              isRemoteUpdate.current = false
         }, 0);
     }, [activeProblem, language]);
+
 
     // Join socket room
     useEffect(() => {
@@ -375,21 +384,41 @@ export default function Room() {
         if (!endTime) return
         const interval = setInterval(() => {
             const remaining = endTime - Date.now()
-
             if (remaining <= 0) {
                 clearInterval(interval)
                 setTimeLeft("00:00")
                 return
             }
-
             const minutes = Math.floor(remaining / 60000).toString()
             const seconds = Math.floor((remaining % 60000) / 1000).toString()
             const formattedTime = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
             setTimeLeft(formattedTime)
         }, 1000)
-
         return () => clearInterval(interval)
     }, [endTime])
+    
+    useEffect(() => {
+        if (roomData?.problems && roomData.problems.length > 0 && !selectedProblem) {
+            setSelectedProblem(roomData.problems[0])  // only set if nothing selected yet
+        }
+    }, [roomData])
+
+    useEffect(() => {
+        if (roomData?.problems && roomData.problems.length > 0 && !activeProblem) {
+            const firstProblem = roomData.problems[0]
+            setActiveProblem(firstProblem)
+            setSelectedProblem(firstProblem)
+        }
+    }, [roomData?.problems, activeProblem])
+
+    //chat
+    useEffect(() => {
+        if (!socket) return
+        socket.on("receive-message", (msg)=>{
+            setMessages(prev => [...prev, msg])
+        })
+        return () => socket.off("receive-message")
+    }, [socket])
 
 
     const handleEditorDidMount = useCallback((editor) => {
@@ -435,20 +464,6 @@ export default function Room() {
 
     const [selectedProblem, setSelectedProblem] = useState(null)
 
-    useEffect(() => {
-        if (roomData?.problems && roomData.problems.length > 0) {
-            setSelectedProblem(roomData.problems[0])
-        }
-    }, [roomData])
-
-    useEffect(() => {
-        if (roomData?.problems && roomData.problems.length > 0 && !activeProblem) {
-            const firstProblem = roomData.problems[0]
-            setActiveProblem(firstProblem)
-            setSelectedProblem(firstProblem)
-        }
-    }, [roomData?.problems, activeProblem])
-
     const handleProblemChange = (e) => {
         const problemId = e.target.value
         const problem = roomData.problems.find(p => p._id === problemId)
@@ -481,45 +496,9 @@ export default function Room() {
         }
     };
 
-    const [isExecuting, setIsExecuting] = useState(false)
-    const [executionResults, setExecutionResults] = useState(null)
-    const [executionError, setExecutionError] = useState(null)
 
-    const handleRunCode = async () => {
-        const currentCode = editorRef.current ? editorRef.current.getValue() : "";
-        if (!currentCode.trim()) {
-            setExecutionError("Cannot submit empty code.");
-            setTerminalOpen(true);
-            return;
-        }
-        const languageMap = { cpp: 54, java: 62, python: 71 };
-        const mappedLangId = languageMap[language];
-
-        if (!mappedLangId) {
-            setExecutionError(`Execution not supported for language: ${language}`);
-            setTerminalOpen(true);
-            return;
-        }
-
-        if (!selectedProblem) {
-            setExecutionError("Please select a problem first");
-            setTerminalOpen(true);
-            return;
-        }
-
-        setTerminalOpen(true); // Open drawer immediately
-        setIsExecuting(true);
-        setExecutionError(null);
-        setExecutionResults(null);
-        try {
-            const response = await runCodeService(roomId, mappedLangId, currentCode, selectedProblem._id);
-            setExecutionResults(response.data);
-        } catch (error) {
-            const errorMessage = error.response?.data?.message || "Execution Server Offline";
-            setExecutionError(errorMessage);
-        } finally {
-            setIsExecuting(false);
-        }
+    const handleRunCode = () => {
+        alert("Code execution coming soon...");
     }
 
     if (!roomData) {
@@ -539,11 +518,17 @@ export default function Room() {
 
     return (
         <div className="flex flex-col h-screen text-slate-200 bg-[#0A0A0A] font-sans overflow-hidden">
+            {/* ── Connection Banner ── */}
+            {!isConnected && (
+                <div className="w-full bg-red-500/10 border-b border-red-500/30 text-red-400 text-xs text-center py-1.5 font-medium">
+                    ⚠️ Connection lost — trying to reconnect...
+                </div>
+            )}
 
             {/* ── IDE Header ── */}
             <header className="flex shrink-0 items-center justify-between border-b border-slate-600/20 px-5 py-3 bg-[#1A1D29]">
 
-                {/* Left: Info */}
+                {/* Left */}
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-[#0d1117] border border-[#30363d] flex items-center justify-center">
@@ -579,7 +564,7 @@ export default function Room() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
                     </button>
                     <button onClick={() => navigate("/dashboard")}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-red-400 border border-transparent hover:text-white hover:bg-white/5 transition-colors">
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-white border border-transparent hover:text-red-500 hover:bg-white/5 transition-colors">
                         Leave
                     </button>
 
@@ -614,18 +599,18 @@ export default function Room() {
                 {/* ── Sidebar (Tabs) ── */}
                 <div className="w-80 shrink-0 flex flex-col border-r border-slate-600/20 bg-[#0A0A0A]">
                     {/* Tab Headers */}
-                    <div className="flex border-b border-slate-600/20 bg-[#1A1D29]">
+                    <div className="flex border-b border-slate-600/20 bg-[#222328]">
                         <button onClick={() => setActiveSidebarTab("problem")}
-                            className={`flex-1 py-2.5 text-xs font-bold transition-colors border-b-2 ${activeSidebarTab === "problem" ? "text-indigo-400 border-indigo-400" : "text-slate-500 border-transparent hover:text-slate-300"}`}>
+                            className={`flex-1 py-2.5 text-s font-bold transition-colors border-b-2 ${activeSidebarTab === "problem" ? "text-indigo-400 border-indigo-400" : "text-slate-500 border-transparent hover:text-slate-300"}`}>
                             Problem
                         </button>
                         <button onClick={() => setActiveSidebarTab("chat")}
-                            className={`flex-1 py-2.5 text-xs font-bold transition-colors border-b-2 ${activeSidebarTab === "chat" ? "text-indigo-400 border-indigo-400" : "text-slate-500 border-transparent hover:text-slate-300"}`}>
+                            className={`flex-1 py-2.5 text-s font-bold transition-colors border-b-2 ${activeSidebarTab === "chat" ? "text-indigo-400 border-indigo-400" : "text-slate-500 border-transparent hover:text-slate-300"}`}>
                             Chat
                         </button>
                         {isInterviewer && (
                             <button onClick={() => setActiveSidebarTab("notes")}
-                                className={`flex-1 py-2.5 text-xs font-bold transition-colors border-b-2 ${activeSidebarTab === "notes" ? "text-indigo-400 border-indigo-400" : "text-slate-500 border-transparent hover:text-slate-300"}`}>
+                                className={`flex-1 py-2.5 text-s font-bold transition-colors border-b-2 ${activeSidebarTab === "notes" ? "text-indigo-400 border-indigo-400" : "text-slate-500 border-transparent hover:text-slate-300"}`}>
                                 Panel
                             </button>
                         )}
@@ -673,7 +658,7 @@ export default function Room() {
                         {/* Chat Tab */}
                         {activeSidebarTab === "chat" && (
                             <div className="absolute inset-0">
-                                <ChatPanel roomId={roomId} socket={socket} currentUser={user} />
+                                <ChatPanel roomId={roomId} socket={socket} currentUser={user} messages={messages} setMessages={setMessages}/>
                             </div>
                         )}
 
@@ -746,10 +731,10 @@ export default function Room() {
                             </button>
                         )}
 
-                        <button onClick={handleRunCode} disabled={isExecuting || roomData.status === "ended"}
-                            className="flex items-center gap-1.5 px-5 py-1.5 rounded-lg text-xs font-bold text-white transition-all disabled:opacity-50 bg-emerald-600 hover:bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                            {isExecuting ? "Executing..." : "▶ Run"}
+                        <button onClick={handleRunCode} disabled={roomData.status === "ended"}>
+                            ▶ Run
                         </button>
+
                     </div>
 
                     {/* Monaco Editor */}
@@ -784,60 +769,7 @@ export default function Room() {
                             </div>
                         )}
                     </div>
-
-                    {/* ── Terminal Drawer ── */}
-                    {terminalOpen && (
-                        <div className="h-1/3 min-h-[250px] border-t border-slate-600/30 bg-[#0A0A0A] flex flex-col shadow-[0_-10px_30px_rgba(0,0,0,0.5)] z-20">
-                            {/* Terminal Header */}
-                            <div className="flex justify-between items-center px-4 py-2 border-b border-slate-600/30 bg-[#1A1D29]">
-                                <h3 className="text-gray-300 font-bold tracking-widest text-[10px] uppercase font-mono">Terminal Output</h3>
-                                <button onClick={() => setTerminalOpen(false)} className="text-gray-500 hover:text-white">✕</button>
-                            </div>
-
-                            {/* Terminal Body */}
-                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar font-mono text-xs">
-                                {isExecuting && (
-                                    <div className="flex items-center text-indigo-400 gap-2">
-                                        <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                                        Running against hidden test cases...
-                                    </div>
-                                )}
-
-                                {executionError && (
-                                    <div className="text-red-400 bg-red-900/10 p-3 rounded-lg border border-red-500/20 shadow-inner">
-                                        <span className="font-bold">Error:</span> {executionError}
-                                    </div>
-                                )}
-
-                                {executionResults && executionResults.map((result, index) => (
-                                    <div key={index} className="mb-4 rounded-lg p-3 border border-slate-600/30 bg-[#1A1D29]">
-                                        <div className="flex justify-between items-center mb-3 border-b border-slate-600/20 pb-2">
-                                            <span className="text-slate-400 font-bold">Test Case {index + 1}</span>
-                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${result.passed ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"
-                                                }`}>{result.status}</span>
-                                        </div>
-
-                                        {!result.passed && (
-                                            <div className="grid grid-cols-2 gap-4 mt-2">
-                                                <div>
-                                                    <div className="text-slate-500 mb-1 text-[10px] uppercase tracking-widest">Expected Output</div>
-                                                    <div className="p-2.5 rounded-lg text-emerald-300/90 whitespace-pre-wrap border border-slate-600/30 bg-[#0A0A0A] shadow-inner">
-                                                        {result.expectedOutput}
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-slate-500 mb-1 text-[10px] uppercase tracking-widest">Your Output</div>
-                                                    <div className="p-2.5 rounded-lg text-red-300/90 whitespace-pre-wrap border border-slate-600/30 bg-[#0A0A0A] shadow-inner">
-                                                        {result.actualOutput || "<empty string>"}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    
                 </div>
             </div>
 
@@ -850,13 +782,15 @@ export default function Room() {
                     const newProblem = updatedRoomData.problems[updatedRoomData.problems.length - 1];
                     setActiveProblem(newProblem);
                     setSelectedProblem(newProblem);
-                    if (socket) socket.emit("notify-new-problem", { roomId, updatedRoomData });
+                    if (socket){
+                        socket.emit("notify-new-problem", { roomId, updatedRoomData });
+                    } 
                 }}
                 socket={socket} roomId={roomId}
             />
 
             <FeedbackModal
-                isOpen={!!feedbackSessionId}
+                isOpen={feedbackSessionId !== null} 
                 onSubmit={handleFeedbackSubmit}
                 isSubmitting={isSubmittingFeedback}
             />

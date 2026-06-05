@@ -43,7 +43,7 @@ function App() {
 
             <Route path="/room/:roomId" element={<ProtectedRoute> <Room /></ProtectedRoute>} />
         </Routes>
-    )  
+    )   
 }
 
 export default App  

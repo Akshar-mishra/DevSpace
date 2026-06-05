@@ -1,13 +1,7 @@
 import { useState } from "react";
 import api from "../services/api";
 
-export default function ProblemGeneratorModal({ 
-    isOpen, 
-    onClose, 
-    onProblemGenerated, 
-    socket, 
-    roomId 
-}) {
+export default function ProblemGeneratorModal({isOpen, onClose, onProblemGenerated, roomId}) {
     const [inputValue, setInputValue] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -18,26 +12,21 @@ export default function ProblemGeneratorModal({
             setError("Problem name cannot be empty");
             return;
         }
-
         setLoading(true);
         setError(null);
-
         try {
-            // Call backend to generate problem via Gemini
-            const response = await api.post(
-                `/rooms/${roomId}/add-problem`,
-                { problemName: trimmed },
+            // Call backend to generate problem
+            const response = await api.post(`/rooms/${roomId}/add-problem`,{ problemName: trimmed },
                 { withCredentials: true }
             )
-
-            // Clear and close
             setInputValue("");
             onProblemGenerated?.(response.data.data);
             onClose();
-        } catch (err) {
-            const msg = 
-                err.response?.data?.message || 
-                err.message || 
+        } 
+        catch (err) {
+            const msg =
+                err.response?.data?.message ||
+                err.message ||
                 "Failed to generate problem";
             setError(msg);
             console.error("Problem generation error:", err);
@@ -105,7 +94,7 @@ export default function ProblemGeneratorModal({
                         Cancel
                     </button>
                     <button
-                        onClick={()=>{handleGenerate()}}
+                        onClick={handleGenerate}
                         disabled={loading || !inputValue.trim()}
                         className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 rounded-lg text-white font-bold transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed text-sm"
                     >
@@ -119,12 +108,7 @@ export default function ProblemGeneratorModal({
                         )}
                     </button>
                 </div>
-
-                {/* Hint */}
-                <p className="mt-4 text-xs text-gray-600 text-center">
-                    Press Enter to generate quickly
-                </p>
             </div>
         </div>
-    );
+    ); 
 }

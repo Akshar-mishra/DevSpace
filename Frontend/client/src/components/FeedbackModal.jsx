@@ -12,9 +12,15 @@ export default function FeedbackModal({ isOpen, onSubmit, isSubmitting }) {
     if (!isOpen) return null;
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setForm(prev => ({ ...prev, [name]: name === "comments" ? value : Number(value) }));
-    };
+        const { name, value } = e.target
+
+        // ratings are numbers, comments stay as string
+        if (name === "comments") {
+            setForm(prev => ({ ...prev, comments: value }))
+        } else {
+            setForm(prev => ({ ...prev, [name]: Number(value) }))
+        }
+    }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -68,4 +74,4 @@ export default function FeedbackModal({ isOpen, onSubmit, isSubmitting }) {
             </div>
         </div>
     );
-}
+} 

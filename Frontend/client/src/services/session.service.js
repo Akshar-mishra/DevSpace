@@ -13,4 +13,4 @@ export const getMySessions = async () => {
 export const deleteSession = async (sessionId) => {
     const response = await api.delete(`/sessions/${sessionId}`);  
     return response.data;  
-}
+} 

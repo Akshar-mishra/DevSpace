@@ -5,8 +5,7 @@
     border-left-style: solid;
 }
 
-/* Add this to your index.css */
 body {
-  background-color: #030712; /* Matches your gray-950 */
+  background-color: #030712; 
   color: white;
 }

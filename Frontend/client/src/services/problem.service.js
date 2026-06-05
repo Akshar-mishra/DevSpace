@@ -15,4 +15,4 @@ export const generateProblem = async (problemName) => {
         )  
         return response.data   // ApiResponse wrapper
    
-}  
+}   

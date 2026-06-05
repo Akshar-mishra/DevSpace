@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
             } finally {
                 setLoading(false);
             }
-        };
+        }; 
 
         initAuth();
     }, []);
