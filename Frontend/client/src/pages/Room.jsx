@@ -189,8 +189,6 @@ export default function Room() {
     const [feedbackSessionId, setFeedbackSessionId] = useState(null)
     const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
 
-    const [isConnected, setIsConnected] = useState(true)
-
     // Load room
     useEffect(() => {
         let cancelled = false
@@ -213,14 +211,6 @@ export default function Room() {
     //MASTER SOCKET LISTENER
     useEffect(() => {
         if (!socket) return
-        socket.on("disconnect", () => setIsConnected(false))
-
-        socket.on("connect", () => {
-            setIsConnected(true)
-            socket.emit("join-room", roomId) 
-        })
-        socket.on("connect_error", () => setIsConnected(false))
-
         socket.on("room-state", (state) => {
             if (state?.codes) {
                 localCodeCache.current = state.codes
@@ -292,7 +282,6 @@ export default function Room() {
 
         socket.on("interview-ended", () => {
             setRoomData(prev => ({ ...prev, status: "ended" }));
-            setMessages([]);
             alert("The session has concluded. The workspace is now locked.");
         })
 
@@ -302,10 +291,9 @@ export default function Room() {
             }
         })
         return () => {
-            socket.off("disconnect")
-            socket.off("connect")
-            socket.off("connect_error")
             socket.off("room-state")
+            socket.off("timer-started")      
+            socket.off("receive-hint") 
             socket.off("code-update")
             socket.off("language-update")
             socket.off("room-updated")
@@ -413,11 +401,10 @@ export default function Room() {
 
     //chat
     useEffect(() => {
-        if (!socket) return
-        socket.on("receive-message", (msg)=>{
-            setMessages(prev => [...prev, msg])
-        })
-        return () => socket.off("receive-message")
+         if (!socket) return
+        const onMessage = (msg) => setMessages(prev => [...prev, msg])
+        socket.on("receive-message", onMessage)
+        return () => socket.off("receive-message", onMessage)
     }, [socket])
 
 
@@ -447,7 +434,6 @@ export default function Room() {
 
         if (!localCodeCache.current[currProblem._id]) localCodeCache.current[currProblem._id] = {};
         localCodeCache.current[currProblem._id][currLang] = value;
-
         if (socket && roomId && shouldShareEditor(roomData)) {
             socket.emit("code-change", { roomId, problemId: currProblem._id, language: currLang, code: value ?? "" });
         }
@@ -514,16 +500,10 @@ export default function Room() {
 
     const sharing = shouldShareEditor(roomData)
     const currentLang = LANGUAGES.find(l => l.value === language) ?? LANGUAGES[0]
-    const isInterviewer = roomData.type === "interview_room" && user?.role === "interviewer"
+    const isInterviewer = roomData?.type === "interview_room" && user?.role === "interviewer"
 
     return (
         <div className="flex flex-col h-screen text-slate-200 bg-[#0A0A0A] font-sans overflow-hidden">
-            {/* ── Connection Banner ── */}
-            {!isConnected && (
-                <div className="w-full bg-red-500/10 border-b border-red-500/30 text-red-400 text-xs text-center py-1.5 font-medium">
-                    ⚠️ Connection lost — trying to reconnect...
-                </div>
-            )}
 
             {/* ── IDE Header ── */}
             <header className="flex shrink-0 items-center justify-between border-b border-slate-600/20 px-5 py-3 bg-[#1A1D29]">

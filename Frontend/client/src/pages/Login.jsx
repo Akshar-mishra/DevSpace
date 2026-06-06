@@ -41,8 +41,14 @@ const Login = () => {
 
     return (
         <div 
-            className="flex h-screen items-center justify-center bg-[#1e2532] bg-[radial-gradient(ellipse_80%_80%_at_50%_-10%,rgba(74,222,128,0.35),rgba(30,37,50,1)_80%)] p-4"
-        >
+    className="flex min-h-screen items-center justify-center bg-[#071318] p-4 overflow-hidden"
+    style={{
+        backgroundImage: `
+            radial-gradient(circle at 50% 40%, rgba(40, 165, 180, 0.65) 0%, transparent 80%),
+            repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.015) 0px, rgba(255, 255, 255, 0.015) 1px, transparent 1px, transparent 24px)
+        `
+    }}
+>
            <div className="w-full max-w-sm bg-white/[0.15] p-8 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)] border border-white/[0.3] backdrop-blur-[40px] overflow-y-auto max-h-[90vh] custom-scrollbar">
                 <h2 className="text-2xl font-bold text-center text-slate-50 mb-8 tracking-wide">Login to DevSpace</h2>
 

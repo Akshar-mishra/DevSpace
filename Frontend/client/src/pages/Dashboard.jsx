@@ -392,7 +392,7 @@ const Dashboard = () => {
                             <span className="text-[10px] text-[#8b949e]">{user?.role === 'interviewer' ? 'Interviewer' : 'Candidate'}</span>
                         </div>
                         <div className="h-6 w-px bg-[#000000] hidden sm:block" />
-                        <button onClick={handleLogout} className="text-sm font-medium transition-colors text-[#ffffff] hover:text-[#d40b0b]  hover:border-[#f85149]/30 border rounded-md px-3 py-1">
+                        <button onClick={handleLogout} className="text-sm font-medium transition-colors text-[#ffffff] hover:text-[#d40b0b]  hover:border-[#f85149]/100 border rounded-md px-3 py-1">
                             Logout
                         </button>
                     </div>
