@@ -18,3 +18,18 @@ html, body {
 html::-webkit-scrollbar, body::-webkit-scrollbar {
     display: none; /* Chrome, Safari and Opera */
 }
+
+/* --- Monaco Multiplayer Cursors --- */
+.remote-cursor {
+    margin-left: -1px;
+    z-index: 10;
+    transition: all 0.1s ease; /* Smooth movement */
+}
+
+/* Maps exactly to your AVATAR_COLORS array */
+.remote-cursor-0 { border-left: 2px solid #6366f1 !important; }
+.remote-cursor-1 { border-left: 2px solid #8b5cf6 !important; }
+.remote-cursor-2 { border-left: 2px solid #ec4899 !important; }
+.remote-cursor-3 { border-left: 2px solid #14b8a6 !important; }
+.remote-cursor-4 { border-left: 2px solid #f59e0b !important; }
+.remote-cursor-5 { border-left: 2px solid #3b82f6 !important; }

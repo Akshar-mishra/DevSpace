@@ -35,6 +35,16 @@ function getInitials(name) {
     if (!name) return "?"
     return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
 }
+
+function getUserColorClass(userId) {
+    if (!userId) return "remote-cursor-0";
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+        hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return `remote-cursor-${Math.abs(hash) % AVATAR_COLORS.length}`;
+}
+
 function AvatarStack({ participants }) {
     return (
         <div className="flex items-center gap-1.5 bg-[#1A1D29] px-2 py-1 rounded-lg border border-slate-600/30">
@@ -57,7 +67,6 @@ function AvatarStack({ participants }) {
         </div>
     )
 }
-
 
 
 // Chat Panel 
@@ -177,8 +186,12 @@ export default function Room() {
         languageRef.current = language
     }, [language])
     const editorRef = useRef(null)
+    const monacoRef = useRef(null)                  //  Holds the monaco instance
+    const remoteCursorsRef = useRef({})             // Tracks x,y of everyone
+    const decorationsCollectionRef = useRef(null)   //  The painter tool
     const isRemoteUpdate = useRef(false)
     const pendingState = useRef(null)
+    const roomDataRef = useRef(null)
 
     const [endTime, setEndTime] = useState(null)
     const [timeLeft, setTimeLeft] = useState("00:00")
@@ -196,6 +209,7 @@ export default function Room() {
             try {
                 const res = await api.get(`/rooms/${roomId}`)
                 if (!cancelled) {
+                    roomDataRef.current = res.data.data
                     setRoomData(res.data.data)
                     setParticipants(res.data.data.participants ?? [])
                 }
@@ -214,26 +228,32 @@ export default function Room() {
         socket.on("room-state", (state) => {
             if (state?.codes) {
                 localCodeCache.current = state.codes
-                const currProblem = activeProblemRef.current;
-                const currLang = languageRef.current;
+            }
+            if (state?.endTime) {
+                setEndTime(state.endTime)
+            }
 
-                if (currProblem && editorRef.current && state.codes[currProblem._id]?.[currLang] !== undefined) {
-                    isRemoteUpdate.current = true
-                    editorRef.current.setValue(state.codes[currProblem._id][currLang])
-                    setTimeout(() => {
-                        isRemoteUpdate.current = false
-                    }, 0)
+            // roomDataRef is always current — no stale closure issue
+            const problems = roomDataRef.current?.problems
+            if (state?.activeProblemId && problems) {
+                const serverProb = problems.find(p => p._id === state.activeProblemId)
+                if (serverProb) {
+                    setActiveProblem(serverProb)
+                    setSelectedProblem(serverProb)
+                    // restore language
+                    const serverLang = state.languages?.[state.activeProblemId]
+                    if (serverLang) setLanguage(serverLang)
+                    return
                 }
-                if (state?.endTime) {
-                    setEndTime(state.endTime)
-                }
-                if (state?.activeProblemId && roomData?.problems) {
-                    const currentProb = roomData.problems.find(p => p._id === state.activeProblemId)
-                    if (currentProb) {
-                        setActiveProblem(currentProb)
-                        setSelectedProblem(currentProb)
-                    }
-                }
+            }
+
+            // no activeProblemId from server — just set first problem if nothing active
+            if (problems?.length > 0 && !activeProblemRef.current) {
+                const firstProb = problems[0]
+                setActiveProblem(firstProb)
+                setSelectedProblem(firstProb)
+                const serverLang = state.languages?.[firstProb._id]
+                if (serverLang) setLanguage(serverLang)
             }
         })
 
@@ -290,6 +310,31 @@ export default function Room() {
                 alert(message);
             }
         })
+
+        socket.on("receive-cursor", ({ userId, userName, position }) => {
+            const myId = user?._id || user?.id;
+            if (userId === myId) return; 
+            remoteCursorsRef.current[userId] = { position, userName };
+
+            // Repaint ALL remote cursors
+            if (decorationsCollectionRef.current && monacoRef.current) {
+                const newDecorations = Object.entries(remoteCursorsRef.current).map(([uid, cursorInfo]) => ({
+                    range: new monacoRef.current.Range(
+                        cursorInfo.position.lineNumber,
+                        cursorInfo.position.column,
+                        cursorInfo.position.lineNumber,
+                        cursorInfo.position.column
+                    ),
+                    options: {
+                        className: `remote-cursor ${getUserColorClass(uid)}`,
+                        hoverMessage: { value: `**${cursorInfo.userName}**` }, // Markdown hover
+                        stickiness: monacoRef.current.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges
+                    }
+                }));
+                
+                decorationsCollectionRef.current.set(newDecorations);
+            }
+        })
         return () => {
             socket.off("room-state")
             socket.off("timer-started")      
@@ -299,6 +344,7 @@ export default function Room() {
             socket.off("room-updated")
             socket.off("interview-ended")
             socket.off("cheat-warning")
+            socket.off("receive-cursor")
         }
     }, [socket, roomData])
 
@@ -410,6 +456,21 @@ export default function Room() {
 
     const handleEditorDidMount = useCallback((editor) => {
         editorRef.current = editor
+        monacoRef.current = monaco 
+        decorationsCollectionRef.current = editor.createDecorationsCollection([]);
+
+        // Broadcast local cursor movements
+        editor.onDidChangeCursorPosition((e) => {
+            if (socket && roomId) {
+                socket.emit("cursor-change", {
+                    roomId,
+                    userId: user?._id || user?.id,
+                    userName: user?.name || "Anonymous",
+                    position: e.position
+                });
+            }
+        });
+
         if (pendingState.current) {
             editor.setValue(pendingState.current)
             pendingState.current = null
@@ -421,7 +482,7 @@ export default function Room() {
             const val = saved ?? currProblem.boilerplates?.[currLang] ?? DEFAULT_BOILERPLATE
             editor.setValue(val)
         }
-    }, [])
+    }, [socket, roomId, user])
 
     const handleEditorChange = (value) => {
         const currProblem = activeProblemRef.current;
@@ -706,7 +767,7 @@ export default function Room() {
 
                         {(isInterviewer || roomData?.type === "friendly_room") && (
                             <button onClick={() => setGeneratorOpen(true)} disabled={roomData.status === "ended"}
-                                className="flex items-center gap-1 px-4 py-1 rounded-lg text-s font-bold text-purple-500 transition-colors disabled:opacity-40 hover:bg-teal-500/10 border border-transparent hover:border-indigo-500/30">
+                                className="flex items-center gap-1 px-4 py-1 rounded-lg text-xs font-bold text-purple-500 transition-colors disabled:opacity-40 hover:bg-teal-500/10 border border-transparent hover:border-indigo-500/30">
                                 ✨ Ai Generate
                             </button>
                         )}
