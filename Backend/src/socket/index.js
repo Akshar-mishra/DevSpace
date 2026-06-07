@@ -150,6 +150,11 @@ export const initializeSocket = (httpServer) => {
             })
         })
 
+        socket.on("cursor-change", ({ roomId, userId, userName, position }) => {
+            // Broadcast to everyone else in the room
+            socket.to(roomId).emit("receive-cursor", { userId, userName, position });
+        });
+
         // Disconnect cleanup 
         socket.on("disconnecting", async () => {
             for (const room of socket.rooms) {

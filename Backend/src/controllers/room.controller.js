@@ -6,7 +6,6 @@ import { ApiErrors } from "../utils/ApiErrors.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import crypto from "crypto"
-import { roomCodeState } from "../socket/index.js"  
 
 export const createRoom = asyncHandler(async (req, res) => {
     const { name, type, mode, isPublic, maxParticipants } = req.body
