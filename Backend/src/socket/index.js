@@ -8,20 +8,24 @@ import { Room } from "../models/room.model.js"
 export const roomCodeState = new Map()
 export const initializeSocket = (httpServer) => {
     const io = new Server(httpServer, {
-        cors: { origin: process.env.CORS_ORIGINS || "http://localhost:5173", credentials: true }
+        cors: { origin: process.env.CORS_ORIGINS, credentials: true }
     })
 
     // Auth middleware 
     io.use((socket, next) => {
         try {
-            const cookieString = socket.handshake.headers.cookie
-            if (!cookieString) {
-                throw new ApiErrors(401, "No cookies found")
+            // Try to get token from auth object first (from handshake)
+            let token = socket.handshake.auth?.token
+            
+            // Fall back to cookies if no auth token
+            if (!token) {
+                const cookieString = socket.handshake.headers.cookie
+                if (cookieString) {
+                    const cookies = cookie.parse(cookieString)
+                    token = cookies?.accessToken
+                }
             }
-
-            //making cookie to object
-            const cookies = cookie.parse(cookieString)
-            const token = cookies?.accessToken
+            
             if (!token) {
                 throw new ApiErrors(401, "Missing access token")
             }
