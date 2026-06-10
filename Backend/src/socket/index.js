@@ -8,7 +8,7 @@ import { Room } from "../models/room.model.js"
 export const roomCodeState = new Map()
 export const initializeSocket = (httpServer) => {
     const io = new Server(httpServer, {
-        cors: { origin: "http://localhost:5173", credentials: true }
+        cors: { origin: process.env.CORS_ORIGIN || "http://localhost:5173", credentials: true }
     })
 
     // Auth middleware 
