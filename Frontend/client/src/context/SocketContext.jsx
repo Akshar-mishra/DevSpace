@@ -10,15 +10,36 @@ export const SocketProvider = ({ children }) => {
 
     useEffect(() => {
         if (user) {
-            const socketInstance = io(import.meta.env.VITE_BACKEND_URL, {withCredentials: true});
+            const token = localStorage.getItem('accessToken');
+            console.log("🔵 Attempting to connect to socket at:", import.meta.env.VITE_BACKEND_URL);
+            const socketInstance = io(import.meta.env.VITE_BACKEND_URL, {
+                auth: {
+                    token: token
+                },
+                withCredentials: true,
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                reconnectionAttempts: 5
+            });
+            
             socketInstance.on("connect", () => {
                 console.log("🟢 Frontend Socket Connected:", socketInstance.id);
             });
+
+            socketInstance.on("connect_error", (error) => {
+                console.error("❌ Socket Connection Error:", error);
+            });
+
+            socketInstance.on("disconnect", (reason) => {
+                console.log("🔴 Frontend Socket Disconnected:", reason);
+            });
+
             setSocket(socketInstance);
 
             return () => {
                 socketInstance.disconnect();
-                console.log("🔴 Frontend Socket Disconnected");
+                console.log("🔴 Frontend Socket Cleanup");
             };
         }
     }, [user]); 

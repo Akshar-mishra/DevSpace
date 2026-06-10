@@ -28,6 +28,8 @@ const Login = () => {
         setFormLoading(true)
         try {
             const response = await api.post('/users/login', formData)
+            // Store token in localStorage
+            localStorage.setItem('accessToken', response.data.data.accessToken)
             // Update global auth state
             setUser(response.data.data.user)
             // Redirect to dashboard
