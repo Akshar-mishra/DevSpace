@@ -4,8 +4,21 @@ import cookieParser from "cookie-parser"
 
 const app=express()
 
+const allowedOrigins = [
+  'https://dev-space-psi.vercel.app',
+  'https://devspace-cplk.onrender.com',
+  'http://localhost:5173',
+  'http://localhost:3000'
+]
+
 app.use(cors({
-  origin: process.env.CORS_ORIGINS, 
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('CORS not allowed'))
+    }
+  },
   credentials: true
 }))  
 app.use(express.urlencoded({extended:true , limit:'16kb'}))
