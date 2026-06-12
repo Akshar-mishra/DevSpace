@@ -150,11 +150,6 @@ devspace/
 ### Real-time Code Sync
 Every keystroke emits `code-change` to server → server updates `roomCodeState` (in-memory Map) → broadcasts `code-update` to the other participant. An `isRemoteUpdate` flag prevents infinite emit loops. `activeProblemRef` and `languageRef` use refs instead of state inside socket listeners to avoid stale closures.
 
-### Live Cursor Sync
-Every cursor movement in the Monaco editor emits `cursor-change` to the server → server relays it to everyone else in the room via `socket.to(roomId)` → clients receive `receive-cursor` and update `remoteCursorsRef` (an in-memory map of `userId → { position, userName }`) → all remote cursors are repainted at once using Monaco's `decorationsCollection.set()`.
-
-Each remote cursor is rendered as a decoration with a color class derived from the user's ID (`getUserColorClass`) and a markdown hover tooltip showing their name. Cursor state is stored in a ref (not state) to avoid triggering re-renders on every movement. The sender's own cursor is filtered out on receive using a `userId === myId` guard.
-
 ### Problem Generation
 `POST /rooms/:roomId/add-problem` → DB regex search first (cache hit = instant, free) → Groq only if not found → saved to DB with `generatedBy` field → room updated → interviewer state updates via HTTP response → candidate notified via `notify-new-problem` socket event.
 
@@ -310,10 +305,5 @@ We want consistent, structured JSON output — not creative variation. Zero temp
 **Why refs for `activeProblem` and `language` inside socket listeners?**
 Socket listeners are created once and capture the initial state value (stale closure). Refs always point to the latest value without needing to re-register listeners.
 
-**Why refs for `remoteCursors` instead of state?**
-Cursor positions update on every keystroke — dozens of times per second. Storing them in React state would trigger a re-render on each update, destroying editor performance. A ref holds the latest positions without causing any re-renders; Monaco's decoration API is called directly to repaint cursors.
-
-**Why repaint ALL remote cursors on every update?**
-Monaco's `decorationsCollection.set()` replaces the entire decoration list atomically. Tracking individual cursors and doing partial updates would risk stale decorations (ghost cursors). Repainting all at once is simpler, consistent, and cheap since the cursor count is small.
 
 ---
