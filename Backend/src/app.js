@@ -3,7 +3,7 @@ import cors from "cors"
 import cookieParser from "cookie-parser"  
 
 const app=express()
-
+//added 
 const allowedOrigins = [
   'https://dev-space-psi.vercel.app',
   'https://devspace-cplk.onrender.com',
@@ -21,6 +21,7 @@ app.use(cors({
   },
   credentials: true
 }))  
+
 app.use(express.urlencoded({extended:true , limit:'16kb'}))
 app.use(express.json({limit:'16kb'}))
 app.use(cookieParser())  

@@ -490,10 +490,15 @@ export default function Room() {
 
         if (isRemoteUpdate.current || !currProblem) return;
 
-        if (!hasEdited.current[currProblem._id]) hasEdited.current[currProblem._id] = {};
+        if (!hasEdited.current[currProblem._id]) {
+            hasEdited.current[currProblem._id] = {};
+        }
         hasEdited.current[currProblem._id][currLang] = true;
 
-        if (!localCodeCache.current[currProblem._id]) localCodeCache.current[currProblem._id] = {};
+        if (!localCodeCache.current[currProblem._id]) {
+            localCodeCache.current[currProblem._id] = {};
+        }
+        
         localCodeCache.current[currProblem._id][currLang] = value;
         if (socket && roomId && shouldShareEditor(roomData)) {
             socket.emit("code-change", { roomId, problemId: currProblem._id, language: currLang, code: value ?? "" });

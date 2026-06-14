@@ -16,7 +16,6 @@ export const initializeSocket = (httpServer) => {
         try {
             // Try to get token from auth object first (from handshake)
             let token = socket.handshake.auth?.token
-            
             // Fall back to cookies if no auth token
             if (!token) {
                 const cookieString = socket.handshake.headers.cookie
@@ -25,7 +24,6 @@ export const initializeSocket = (httpServer) => {
                     token = cookies?.accessToken
                 }
             }
-            
             if (!token) {
                 throw new ApiErrors(401, "Missing access token")
             }
