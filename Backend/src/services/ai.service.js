@@ -1,7 +1,6 @@
 import Groq from "groq-sdk";
 import { ApiErrors } from "../utils/ApiErrors.js";
 
-// Initialize Groq. It automatically looks for process.env.GROQ_API_KEY
 const groq = new Groq();
 
 export const generateProblemPayload = async (problemName) => {
@@ -19,32 +18,32 @@ export const generateProblemPayload = async (problemName) => {
       "constraints": ["String"],
       "examples": [{"input": "String", "output": "String", "explanation": "String"}],
       IMPORTANT:
-testCases MUST be an array of OBJECTS.
+      testCases MUST be an array of OBJECTS.
 
-CORRECT:
-"testCases": [
-  {
-    "input": "4 8\n3 6 7 11",
-    "expectedOutput": "4"
-  }
-]
- 
-WRONG:
-"testCases": [
-  "4 8\n3 6 7 11"
-]
+      CORRECT:
+      "testCases": [
+        {
+          "input": "4 8\n3 6 7 11",
+          "expectedOutput": "4"
+        }
+      ]
+      
+      WRONG:
+      "testCases": [
+        "4 8\n3 6 7 11"
+      ]
 
-Every test case object MUST contain BOTH:
-- input
-- expectedOutput
+      Every test case object MUST contain BOTH:
+      - input
+      - expectedOutput
 
-Never return testCases as strings.
-      "boilerplates": {
-        "cpp": "String (Executable C++ template. MUST include #includes, an EMPTY logic function (e.g. return 0/empty vector), and int main() that parses stdin and prints stdout. DO NOT SOLVE THE PROBLEM.)",
-        "java": "String (Executable Java template. MUST include imports, an EMPTY logic method (e.g. return null), and public static void main parsing System.in. DO NOT SOLVE THE PROBLEM.)",
-        "python": "String (Executable Python template. MUST include an EMPTY logic function (just 'pass' or 'return None'), and if __name__ == '__main__': parsing sys.stdin. DO NOT SOLVE THE PROBLEM.)"
-      }
-    }
+      Never return testCases as strings.
+            "boilerplates": {
+              "cpp": "String (Executable C++ template. MUST include #includes, an EMPTY logic function (e.g. return 0/empty vector), and int main() that parses stdin and prints stdout. DO NOT SOLVE THE PROBLEM.)",
+              "java": "String (Executable Java template. MUST include imports, an EMPTY logic method (e.g. return null), and public static void main parsing System.in. DO NOT SOLVE THE PROBLEM.)",
+              "python": "String (Executable Python template. MUST include an EMPTY logic function (just 'pass' or 'return None'), and if __name__ == '__main__': parsing sys.stdin. DO NOT SOLVE THE PROBLEM.)"
+            }
+          }
     
     🚨 ABSOLUTE STRICT RULE FOR BOILERPLATES 🚨
     YOU MUST NOT WRITE THE ACTUAL SOLUTION LOGIC! 
