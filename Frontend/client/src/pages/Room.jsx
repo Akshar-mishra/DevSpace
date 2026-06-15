@@ -209,15 +209,9 @@ export default function Room() {
             try {
                 const res = await api.get(`/rooms/${roomId}`)
                 if (!cancelled) {
-                    const roomData = res.data.data
-                    setRoomData(roomData)
-                    setParticipants(roomData.participants ?? [])
-                    // restore active problem on refresh
-                    if (roomData.problems && roomData.problems.length > 0) {
-                        const lastProblem = roomData.problems[roomData.problems.length - 1]
-                        setActiveProblem(lastProblem)
-                        setSelectedProblem(lastProblem)
-                    }
+                    roomDataRef.current = res.data.data
+                    setRoomData(res.data.data)
+                    setParticipants(res.data.data.participants ?? [])
                 }
             } 
             catch {
@@ -526,7 +520,7 @@ export default function Room() {
         const problemId = e.target.value
         const problem = roomData.problems.find(p => p._id === problemId)
         setSelectedProblem(problem)
-        setActiveProblem(problem) 
+        setActiveProblem(problem)
         if (socket) {
             socket.emit("problem-selected", { roomId, problemId })
         }
