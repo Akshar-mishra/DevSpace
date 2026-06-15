@@ -520,7 +520,10 @@ export default function Room() {
         const problemId = e.target.value
         const problem = roomData.problems.find(p => p._id === problemId)
         setSelectedProblem(problem)
-        setActiveProblem(problem)
+        // interviewer sees instantly, candidate waits for socket
+        if (user?.role === "interviewer") {
+            setActiveProblem(problem)
+        }
         if (socket) {
             socket.emit("problem-selected", { roomId, problemId })
         }
