@@ -120,16 +120,8 @@ export const initializeSocket = (httpServer) => {
 
         socket.on("notify-new-problem", ({ roomId, updatedRoomData }) => {
             if (!roomId) return
-            // hide real problem titles
-            const cleanRoomData = {
-                ...updatedRoomData,
-                problems: updatedRoomData.problems.map((prob, index) => ({
-                    ...prob,
-                    title: `Problem ${index + 1}`
-                }))
-            }
 
-            socket.to(roomId).emit("room-updated", cleanRoomData)
+            socket.to(roomId).emit("room-updated", updatedRoomData)
         })
 
         socket.on("problem-selected", async ({ roomId, problemId }) => {
@@ -140,24 +132,12 @@ export const initializeSocket = (httpServer) => {
             try {
                 const problem = await Problem.findById(problemId)
                     .select("-testCases -createdBy -createdAt -updatedAt")
+
                 const currentState = roomCodeState.get(roomId) || { codes: {}, languages: {} }
                 currentState.activeProblemId = problemId
                 roomCodeState.set(roomId, currentState)
 
-                // get room to find problem index
-                const room = await Room.findById(roomId)
-                const problemIndex = room.problems.findIndex(
-                    (p) => p.toString() === problemId.toString()
-                )
-                const problemNumber = problemIndex + 1
-                const socketsInRoom = await io.in(roomId).fetchSockets()
-
-                for (const s of socketsInRoom) {
-                    const problemToSend = s.user?.role === "member"
-                        ? { ...problem.toObject(), title: `Problem ${problemNumber}` }
-                        : problem
-                    s.emit("problem-loaded", problemToSend)
-                }
+                io.to(roomId).emit("problem-loaded", problem)
             } catch (error) {
                 socket.emit("problem-error", { message: "Failed to load problem" })
             }

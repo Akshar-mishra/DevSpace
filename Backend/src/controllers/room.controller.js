@@ -74,20 +74,14 @@ export const getRoomById = asyncHandler(async (req, res) => {
         .populate("participants", "name email role")
         .populate("problems")  
     
-    if (!room) throw new ApiErrors(404, "Room not found or has been deleted")
+    if (!room) throw new ApiErrors(404, "Room not found or has been deleted")  
 
-    const roomObj = room.toObject()
-    if (req.user.role === "member") {
-        roomObj.problems = roomObj.problems.map((prob, index) => ({
-            ...prob,
-            title: `Problem ${index + 1}`
-        }))
-    }
     return res.status(200)
     .json(
-        new ApiResponse(200, roomObj, "Room data fetched successfully"
+        new ApiResponse(200, room, "Room data fetched successfully"
+
     ))  
-})
+})  
 
 export const getMyRooms = asyncHandler(async (req, res) => {
     const rooms = await Room.find({ participants: req.user._id })
@@ -103,7 +97,7 @@ export const getMyRooms = asyncHandler(async (req, res) => {
 
 export const addProblemToRoom = asyncHandler(async (req, res) => {
     const { roomId } = req.params     
-    const { problemName } = req.body     
+    const { problemName } = req.body  
     if (!problemName || problemName.trim() === "") {
         throw new ApiErrors(400, "Problem name is required")     
     }
@@ -129,6 +123,7 @@ export const addProblemToRoom = asyncHandler(async (req, res) => {
     if (!problem) {
         console.log(`[AI Triggered] Generating new problem: "${problemName}"...`)     
         const problemData = await generateProblemPayload(problemName)     
+        
         if (!problemData || !problemData.boilerplates) {
             throw new ApiErrors(500, "Failed to generate problem via AI")     
         }
@@ -157,25 +152,16 @@ export const addProblemToRoom = asyncHandler(async (req, res) => {
     const problemExistsInRoom = room.problems.some(
         (id) => id.toString() === problem._id.toString()
     )  
+
     if (!problemExistsInRoom) {
         room.problems.push(problem._id)     
         await room.save({ validateBeforeSave: false })     
     }
-
     const updatedRoom = await Room.findById(roomId).populate("problems") 
 
-    const roomObj = updatedRoom.toObject()
-
-    if (req.user.role === "member") {
-        roomObj.problems = roomObj.problems.map((prob, index) => ({
-            ...prob,
-            title: `Problem ${index + 1}`
-        }))
-    }
-    
     return res.status(201)
     .json(
-        new ApiResponse(201, roomObj, "Problem added to room successfully")
+        new ApiResponse(201, updatedRoom, "Problem added to room successfully")
     )     
 })  
 
