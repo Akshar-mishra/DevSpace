@@ -10,10 +10,15 @@ export const generateProblemPayload = async (problemName) => {
     Generate a programming problem based on: "${problemName}".
     If the input is not a recognizable programming concept, generate the classic "Two Sum" problem.
     
+    CRITICAL INSTRUCTION FOR PROBLEM STATEMENT:
+    The problem statement MUST be highly detailed, rigorous, and professional, exactly like a LeetCode problem. 
+    It must include a clear backstory/scenario, exact algorithmic objectives, and a thorough explanation of the expected behavior. 
+    Do not use one-liners. Write a deep, 2-3 paragraph description.
+    
     You MUST return ONLY a raw JSON object matching this exact schema. Do not wrap it in markdown.
     {
       "title": "String",
-      "statement": "String",
+      "statement": "String (Contains the highly detailed 2-3 paragraph LeetCode-style description)",
       "difficulty": "String (Easy, Medium, Hard)",
       "constraints": ["String"],
       "examples": [{"input": "String", "output": "String", "explanation": "String"}],
@@ -57,9 +62,9 @@ export const generateProblemPayload = async (problemName) => {
     try {
         const chatCompletion = await groq.chat.completions.create({
             messages: [{ role: "user", content: prompt }],
-            model: "llama-3.3-70b-versatile", // Lightning fast, incredibly smart Llama 3 model
+            model: "openai/gpt-oss-120b",
             temperature: 0.0,
-            response_format: { type: "json_object" }, // Forces strict JSON validation on Groq's end
+            response_format: { type: "json_object" }, 
         });
 
         const rawJsonString = chatCompletion.choices[0]?.message?.content;
@@ -74,4 +79,3 @@ export const generateProblemPayload = async (problemName) => {
         throw new Error("AI Engine failed to generate the problem. Please try again later.");
     }
 }
-
