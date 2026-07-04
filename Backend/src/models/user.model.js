@@ -19,6 +19,14 @@ const userSchema= new Schema(
             type: String,
             required: [true, 'Password is required']
         },
+        otp: {
+            type: String,       
+            default: null
+        },
+        otpExpiry: {
+            type: Date,
+            default: null
+        },
         role:{
             type: String,
             enum: ["interviewer", "member"],

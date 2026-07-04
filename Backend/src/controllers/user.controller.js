@@ -3,6 +3,9 @@ import { ApiErrors } from "../utils/ApiErrors.js"
 import { ApiResponse } from "../utils/ApiResponse.js"  
 import { asyncHandler } from "../utils/asyncHandler.js"
 import jwt from "jsonwebtoken"  
+import bcrypt from "bcryptjs"
+import crypto from "crypto"
+import {sendNotification} from "../services/notify.service.js"
 
 export const generateAccessAndRefreshToken = async (userId) => {
     try {
@@ -86,6 +89,93 @@ export const loginUser = asyncHandler( async(req,res)=>{
                 "User loggedin successfully"
             )
         )
+})
+
+export const forgotPassword = asyncHandler(async (req, res) => {
+    const { email } = req.body
+    const user = await User.findOne({ email }) 
+    if (!user) {
+        throw new ApiErrors(404, "User not found") 
+    }
+
+    const otp = crypto.randomInt(100000, 1000000).toString()
+    const hashedOtp = await bcrypt.hash(otp, 10)
+
+    // 3. set expiry — 5 min from now
+    user.otp =  hashedOtp
+    user.otpExpiry = Date.now() + 600000  // hint: Date.now() + ___
+
+    await user.save({ validateBeforeSave: false }) 
+
+    // 4. call notify service
+    await sendNotification({
+        to: user.email,
+        subject:"Password Reset OTP",
+        body: `Your OTP is ${otp}`
+    }) 
+
+    return res.status(200)
+    .json(
+        new ApiResponse(200, {}, "OTP sent")
+    ) 
+}) 
+
+export const verifyOtp = asyncHandler(async(req,res)=>{
+    const {email,otp}= req.body
+
+    const user = await User.findOne({email})
+    if(!user){
+        throw new ApiErrors(404,"User not found")
+    }
+
+    if (!user.otp || user.otpExpiry < Date.now()) {
+        throw new ApiErrors(400, "OTP is invalid or expired")
+    }
+
+    const isValid = await bcrypt.compare(otp, user.otp)
+    if (!isValid) throw new ApiErrors(400, "Invalid OTP")
+
+    user.otp = null
+    user.otpExpiry = null
+
+    const resetToken = jwt.sign(
+                        { _id: user._id },
+                        process.env.RESET_TOKEN_SECRET,
+                        { expiresIn: '10m' }
+                        )
+
+    await user.save({ validateBeforeSave: false })
+
+    return res.status(200)
+    .json(
+        new ApiResponse(200, {resetToken}, "OTP verified successfully")
+    )
+})
+
+export const resetPassword =asyncHandler(async(req,res)=>{
+    const {resetToken,newPassword}= req.body
+    if(!resetToken || !newPassword){
+        throw new ApiErrors(400, "Missing required fields")
+    }
+    
+    let decoded
+    try {
+        decoded = jwt.verify(resetToken, process.env.RESET_TOKEN_SECRET)
+    } catch (err) {
+        throw new ApiErrors(401, "Reset token invalid or expired")
+    }
+    
+    const user =await User.findById(decoded._id)
+    if(!user){
+        throw new ApiErrors(404,"User not found")
+    }
+    user.password = newPassword
+    await user.save({validateBeforeSave:false})
+
+    return res.status(200)
+    .json(
+        new ApiResponse(200,{}, "Password reset successfully")
+    )
 })
 
 export const logoutUser= asyncHandler( async (req,res)=>{
