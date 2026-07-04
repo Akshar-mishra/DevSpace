@@ -291,19 +291,4 @@ npm run dev
 
 ---
 
-## Key Design Decisions
 
-**Why `socket.to()` vs `io.to()`?**
-`socket.to()` sends to everyone in the room except the sender. `io.to()` sends to everyone including the sender. Code sync uses `socket.to()` (sender already updated locally). Session end uses `io.to()` (both need to lock).
-
-**Why HTTP before socket on end session?**
-Data must be saved to DB before anyone is notified. If socket fired first and HTTP failed — candidate would see "session ended" but nothing would be saved. Write first, notify second.
-
-**Why `temperature: 0.0` for Groq?**
-We want consistent, structured JSON output — not creative variation. Zero temperature = deterministic, always follows the schema strictly.
-
-**Why refs for `activeProblem` and `language` inside socket listeners?**
-Socket listeners are created once and capture the initial state value (stale closure). Refs always point to the latest value without needing to re-register listeners.
-
-
----
