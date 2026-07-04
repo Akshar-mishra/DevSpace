@@ -8,6 +8,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'  
 import Room from './pages/Room'  
 import SessionReview from './pages/SessionReview'  
+import ForgotPassword from './pages/ForgotPassword'
 
 function App() {
     const { setUser } = useContext(AuthContext)  
@@ -22,7 +23,8 @@ function App() {
             {/* Public Routes */}
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
-
+            
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             {/* Protected Routes */}
             <Route 
                 path="/dashboard" 
