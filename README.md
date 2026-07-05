@@ -54,6 +54,14 @@ DevSpace lets interviewers and candidates collaborate in a shared coding environ
 - Full session review page — browse code snapshots per problem/language, view ratings and notes
 - Past sessions shown on dashboard with overall score
 
+### Email Notifications (NotifyFlow Microservice)
+- Forgot-password flow — OTP generated, hashed (bcrypt), 10-min expiry, emailed via NotifyFlow
+- Account-level brute-force protection — OTP verification locked after 5 failed attempts, independent of IP (defeats distributed attacks)
+- IP-based rate limiting on OTP routes — defense in depth alongside account-level lockout
+- Session-end feedback — candidate automatically emailed their evaluation once interviewer submits it
+- DevSpace communicates with **NotifyFlow**, a separately deployed event-driven notification microservice (Node.js + BullMQ + Redis + Resend), via authenticated REST calls (`x-api-key` header)
+- Fire-and-forget pattern — DevSpace never blocks on email delivery; NotifyFlow's queue + worker handle retries, dead-letter storage, and delivery independently
+
 ### Dashboard
 - Active rooms with status indicators (waiting / active / ended)
 - Session history with score preview
@@ -69,8 +77,9 @@ DevSpace lets interviewers and candidates collaborate in a shared coding environ
 | Backend | Node.js, Express.js |
 | Database | MongoDB + Mongoose |
 | Real-time | Socket.io |
-| AI | Groq SDK (llama-3.3-70b-versatile) |
+| AI | Groq SDK (openai/gpt-oss-120b) |
 | Auth | JWT + HTTP-only cookies |
+| Notifications | NotifyFlow (external microservice) |
 
 ---
 
@@ -216,6 +225,9 @@ npm run dev
 | `JWT_SECRET` | Secret for signing JWT tokens |
 | `GROQ_API_KEY` | Groq API key for AI problem generation |
 | `CLIENT_URL` | Frontend URL for CORS |
+| `NOTIFYFLOW_URL` | Base URL of deployed NotifyFlow service |
+| `NOTIFYFLOW_API_KEY` | API key for authenticating with NotifyFlow |
+| `RESET_TOKEN_SECRET` | Secret for signing short-lived password-reset JWTs |
 
 ### Frontend
 | Variable | Description |
@@ -233,6 +245,9 @@ npm run dev
 | POST | `/api/users/login` | Login |
 | POST | `/api/users/logout` | Logout |
 | GET | `/api/users/me` | Get current user |
+| POST | `/api/users/forgot-password` | Request OTP for password reset |
+| POST | `/api/users/verify-otp` | Verify OTP, receive reset token |
+| POST | `/api/users/reset-password` | Reset password using reset token |
 
 ### Rooms
 | Method | Route | Description |
