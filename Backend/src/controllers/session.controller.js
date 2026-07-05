@@ -4,6 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler.js"
 import { Session } from "../models/session.model.js"  
 import { Room } from "../models/room.model.js"
 import { User } from "../models/user.model.js"
+import { sendNotification } from "../services/notify.service.js"
 
 export const submitFeedback= asyncHandler(async (req, res) => {
     const {sessionId} = req.params
@@ -30,6 +31,24 @@ export const submitFeedback= asyncHandler(async (req, res) => {
     }
 
     await session.save()
+
+    const candidate = await User.findById(session.candidate)
+    if (!candidate) {
+        console.error("Candidate not found for notification, skipping email")
+    } 
+    
+    const emailBody = `Your interview feedback:
+        Communication: ${communication}/5
+        Problem Solving: ${problemSolving}/5
+        Code Quality: ${codeQuality}/5
+        Overall: ${overall}/5
+        Comments: ${comments}`
+
+    await sendNotification({
+        to: candidate.email,
+        subject: "Interview Feedback By Interviewer ",
+        body: emailBody
+    })
 
     return res.status(200)
     .json(
