@@ -98,16 +98,15 @@ export const forgotPassword = asyncHandler(async (req, res) => {
         throw new ApiErrors(404, "User not found") 
     }
 
-    const otp = crypto.randomInt(100000, 1000000).toString()
+    const otp = crypto.randomInt(100000, 1000000).toString() 
     const hashedOtp = await bcrypt.hash(otp, 10)
 
-    // 3. set expiry — 5 min from now
     user.otp =  hashedOtp
-    user.otpExpiry = Date.now() + 600000  // hint: Date.now() + ___
+    user.otpExpiry = Date.now() + 600000  
+    user.otpAttempts = 0 
 
     await user.save({ validateBeforeSave: false }) 
 
-    // 4. call notify service
     await sendNotification({
         to: user.email,
         subject:"Password Reset OTP",
@@ -131,12 +130,24 @@ export const verifyOtp = asyncHandler(async(req,res)=>{
     if (!user.otp || user.otpExpiry < Date.now()) {
         throw new ApiErrors(400, "OTP is invalid or expired")
     }
+    if (user.otpAttempts >= 5) {
+        user.otp = null
+        user.otpExpiry = null
+        user.otpAttempts = 0
+        await user.save({ validateBeforeSave: false })
+        throw new ApiErrors(429, "Too many failed attempts. Please request a new OTP.")
+    }
 
     const isValid = await bcrypt.compare(otp, user.otp)
-    if (!isValid) throw new ApiErrors(400, "Invalid OTP")
+    if (!isValid) {
+        user.otpAttempts += 1
+        await user.save({ validateBeforeSave: false })
+        throw new ApiErrors(400, "Invalid OTP")
+    }
 
     user.otp = null
     user.otpExpiry = null
+    user.otpAttempts = 0
 
     const resetToken = jwt.sign(
                         { _id: user._id },

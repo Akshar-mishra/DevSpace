@@ -27,6 +27,10 @@ const userSchema= new Schema(
             type: Date,
             default: null
         },
+        otpAttempts: {
+            type: Number,
+            default: 0
+        },
         role:{
             type: String,
             enum: ["interviewer", "member"],
